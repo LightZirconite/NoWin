@@ -7,33 +7,37 @@ if %errorLevel% neq 0 (
 )
 
 echo ==========================================
-echo        VERIFICATION DU VERROUILLAGE
+echo        VERIFICATION AVANCEE (ULTIMATE)
 echo ==========================================
 echo.
 
-echo [1] ETAT WinRE (Doit etre 'Disabled' ou 'Desactive') :
-reagentc /info
+echo [1] ETAT WinRE (Moteur de recuperation) :
+reagentc /info | findstr /i "status"
 echo.
 echo ------------------------------------------
-echo.
 
-echo [2] Protection Panneau de Config (NoControlPanel) :
-reg query "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" /v NoControlPanel 2>nul
+echo [2] Protection BCD (Boot Configuration) :
+bcdedit /enum {current} | findstr /i "recoveryenabled bootstatuspolicy"
+echo (Attendu : recoveryenabled No / bootstatuspolicy IgnoreAllFailures)
+echo.
+echo ------------------------------------------
+
+echo [3] Blocage Executable (systemreset.exe) :
+reg query "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\systemreset.exe" /v Debugger 2>nul
 if %errorLevel% equ 0 (
-    echo   -> OK : La cle existe (Verrouille si 0x1)
+    echo   -> OK : Redirection active (L'executable est neutralise)
 ) else (
-    echo   -> INFO : La cle n'existe pas (Deverrouille)
+    echo   -> ATTENTION : Pas de blocage executable
 )
 echo.
 echo ------------------------------------------
-echo.
 
-echo [3] Protection Page Parametres (SettingsPageVisibility) :
+echo [4] Masquage Visuel (SettingsPageVisibility) :
 reg query "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" /v SettingsPageVisibility 2>nul
 if %errorLevel% equ 0 (
-    echo   -> OK : La cle existe (Verrouille si hide:recovery)
+    echo   -> OK : Pages masquees (hide:recovery;backup)
 ) else (
-    echo   -> INFO : La cle n'existe pas (Deverrouille)
+    echo   -> INFO : Visible
 )
 
 echo.

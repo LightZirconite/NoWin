@@ -1,18 +1,23 @@
 @echo off
-:: Check for Administrator privileges silently
+:: Check for Administrator privileges
 net session >nul 2>&1
 if %errorLevel% neq 0 (
     powershell -Command "Start-Process '%~f0' -Verb RunAs"
     exit /b
 )
 
-:: Enable Windows Recovery Environment (WinRE)
+:: 1. Enable WinRE
 reagentc /enable >nul 2>&1
 
-:: Enable Control Panel by deleting the NoControlPanel value
-reg delete "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" /v NoControlPanel /f >nul 2>&1
+:: 2. Revert BCD
+bcdedit /set {current} recoveryenabled Yes >nul 2>&1
+bcdedit /set {default} recoveryenabled Yes >nul 2>&1
+bcdedit /set {current} bootstatuspolicy DisplayAllFailures >nul 2>&1
 
-:: Show the "Recovery" page in Settings again
+:: 3. Remove IFEO Block
+reg delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\systemreset.exe" /f >nul 2>&1
+
+:: 4. Restore UI
 reg delete "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" /v SettingsPageVisibility /f >nul 2>&1
 
 :: Force restart Windows Explorer to revert changes
