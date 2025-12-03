@@ -22,18 +22,18 @@ echo (Attendu : recoveryenabled No / bootstatuspolicy IgnoreAllFailures)
 echo.
 echo ------------------------------------------
 
-echo [3] Blocage Executable (systemreset.exe & rstrui.exe) :
+echo [3] Blocage Executable (systemreset.exe ^& rstrui.exe) :
 reg query "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\systemreset.exe" /v Debugger 2>nul
 if %errorLevel% equ 0 (
-    echo   -> OK : systemreset.exe neutralise
+    echo    * OK : systemreset.exe neutralise
 ) else (
-    echo   -> ATTENTION : systemreset.exe ACTIF
+    echo    * ATTENTION : systemreset.exe ACTIF
 )
 reg query "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\rstrui.exe" /v Debugger 2>nul
 if %errorLevel% equ 0 (
-    echo   -> OK : rstrui.exe (Restauration) neutralise
+    echo    * OK : rstrui.exe ^(Restauration^) neutralise
 ) else (
-    echo   -> ATTENTION : rstrui.exe ACTIF
+    echo    * ATTENTION : rstrui.exe ACTIF
 )
 echo.
 echo ------------------------------------------
@@ -41,9 +41,9 @@ echo ------------------------------------------
 echo [4] System Restore Policy :
 reg query "HKLM\SOFTWARE\Policies\Microsoft\Windows NT\SystemRestore" /v DisableSR 2>nul
 if %errorLevel% equ 0 (
-    echo   -> OK : Restauration systeme desactivee par GPO
+    echo    * OK : Restauration systeme desactivee par GPO
 ) else (
-    echo   -> INFO : Restauration systeme active
+    echo    * INFO : Restauration systeme active
 )
 echo.
 echo ------------------------------------------
@@ -51,9 +51,9 @@ echo ------------------------------------------
 echo [5] Masquage Visuel (SettingsPageVisibility) :
 reg query "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" /v SettingsPageVisibility 2>nul
 if %errorLevel% equ 0 (
-    echo   -> OK : Pages masquees (hide:recovery;backup)
+    echo    * OK : Pages masquees ^(hide:recovery;backup^)
 ) else (
-    echo   -> INFO : Visible
+    echo    * INFO : Visible
 )
 echo.
 echo ------------------------------------------
@@ -61,12 +61,12 @@ echo ------------------------------------------
 echo [6] User Privileges Check :
 net localgroup Administrators | findstr /i "\<%USERNAME%\>" >nul
 if %errorLevel% equ 0 (
-    echo   -> WARNING : Current user [%USERNAME%] is an ADMINISTRATOR.
+    echo    * WARNING : Current user [%USERNAME%] is an ADMINISTRATOR.
 ) else (
-    echo   -> OK : Current user [%USERNAME%] is a STANDARD USER.
+    echo    * OK : Current user [%USERNAME%] is a STANDARD USER.
 )
 echo.
-echo   -> Built-in Administrator status:
+echo    * Built-in Administrator status:
 net user Administrator | findstr /i "active"
 
 echo.

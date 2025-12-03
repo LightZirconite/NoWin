@@ -23,15 +23,15 @@ if %errorLevel% neq 0 (
     pause
     exit /b
 )
-echo    -> Success. Password set.
+echo    * Success. Password set.
 
 echo.
 echo [2/2] Demoting user [%TARGET_USER%] to Standard User...
 net localgroup Administrators "%TARGET_USER%" /delete
 if %errorLevel% equ 0 (
-    echo    -> Success. %TARGET_USER% is now a Standard User.
+    echo    * Success. %TARGET_USER% is now a Standard User.
 ) else (
-    echo    -> ERROR: Could not remove user from Administrators group.
+    echo    * ERROR: Could not remove user from Administrators group.
     echo       (Maybe they are not in the group or name is wrong?)
 )
 

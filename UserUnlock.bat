@@ -34,9 +34,9 @@ echo.
 echo [1/2] Promoting user [%TARGET_USER%] to Administrator...
 net localgroup Administrators "%TARGET_USER%" /add
 if %errorLevel% equ 0 (
-    echo    -> Success. %TARGET_USER% is now an Administrator.
+    echo    * Success. %TARGET_USER% is now an Administrator.
 ) else (
-    echo    -> ERROR: Could not add user to Administrators group.
+    echo    * ERROR: Could not add user to Administrators group.
 )
 
 echo.
@@ -45,9 +45,9 @@ echo [2/2] Disabling built-in Administrator account...
 net localgroup Administrators "%TARGET_USER%" | findstr /i "%TARGET_USER%" >nul
 if %errorLevel% equ 0 (
     net user Administrator /active:no
-    echo    -> Success. Built-in Admin disabled.
+    echo    * Success. Built-in Admin disabled.
 ) else (
-    echo    -> WARNING: Target user does not seem to be Admin yet.
+    echo    * WARNING: Target user does not seem to be Admin yet.
     echo       Keeping built-in Administrator active for safety.
 )
 
