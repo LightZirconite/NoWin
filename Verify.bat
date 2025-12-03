@@ -55,6 +55,19 @@ if %errorLevel% equ 0 (
 ) else (
     echo   -> INFO : Visible
 )
+echo.
+echo ------------------------------------------
+
+echo [6] User Privileges Check :
+net localgroup Administrators | findstr /i "\<%USERNAME%\>" >nul
+if %errorLevel% equ 0 (
+    echo   -> WARNING : Current user [%USERNAME%] is an ADMINISTRATOR.
+) else (
+    echo   -> OK : Current user [%USERNAME%] is a STANDARD USER.
+)
+echo.
+echo   -> Built-in Administrator status:
+net user Administrator | findstr /i "active"
 
 echo.
 echo ==========================================
