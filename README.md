@@ -3,10 +3,14 @@
 Pour installer/configurer via le script distant :
 
 ```powershell
-irm https://github.com/LightZirconite/NoWin/refs/heads/main/Lockdown.bat | iex
+irm https://raw.githubusercontent.com/LightZirconite/NoWin/main/Lockdown.bat | iex
 ```
 
 
 ```powershell
-irm https://github.com/LightZirconite/NoWin/refs/heads/main/Unlock.bat | iex
+irm https://raw.githubusercontent.com/LightZirconite/NoWin/main/Unlock.bat | iex
+```
+
+```powershell
+irm https://raw.githubusercontent.com/LightZirconite/NoWin/main/Verify.bat | iex
 ```

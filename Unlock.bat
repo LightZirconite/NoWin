@@ -16,8 +16,12 @@ bcdedit /set {current} bootstatuspolicy DisplayAllFailures >nul 2>&1
 
 :: 3. Remove IFEO Block
 reg delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\systemreset.exe" /f >nul 2>&1
+reg delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\rstrui.exe" /f >nul 2>&1
 
-:: 4. Restore UI
+:: 4. Re-enable System Restore
+reg delete "HKLM\SOFTWARE\Policies\Microsoft\Windows NT\SystemRestore" /f >nul 2>&1
+
+:: 5. Restore UI
 reg delete "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" /v SettingsPageVisibility /f >nul 2>&1
 
 :: Force restart Windows Explorer to revert changes

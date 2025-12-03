@@ -22,17 +22,33 @@ echo (Attendu : recoveryenabled No / bootstatuspolicy IgnoreAllFailures)
 echo.
 echo ------------------------------------------
 
-echo [3] Blocage Executable (systemreset.exe) :
+echo [3] Blocage Executable (systemreset.exe & rstrui.exe) :
 reg query "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\systemreset.exe" /v Debugger 2>nul
 if %errorLevel% equ 0 (
-    echo   -> OK : Redirection active (L'executable est neutralise)
+    echo   -> OK : systemreset.exe neutralise
 ) else (
-    echo   -> ATTENTION : Pas de blocage executable
+    echo   -> ATTENTION : systemreset.exe ACTIF
+)
+reg query "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\rstrui.exe" /v Debugger 2>nul
+if %errorLevel% equ 0 (
+    echo   -> OK : rstrui.exe (Restauration) neutralise
+) else (
+    echo   -> ATTENTION : rstrui.exe ACTIF
 )
 echo.
 echo ------------------------------------------
 
-echo [4] Masquage Visuel (SettingsPageVisibility) :
+echo [4] System Restore Policy :
+reg query "HKLM\SOFTWARE\Policies\Microsoft\Windows NT\SystemRestore" /v DisableSR 2>nul
+if %errorLevel% equ 0 (
+    echo   -> OK : Restauration systeme desactivee par GPO
+) else (
+    echo   -> INFO : Restauration systeme active
+)
+echo.
+echo ------------------------------------------
+
+echo [5] Masquage Visuel (SettingsPageVisibility) :
 reg query "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" /v SettingsPageVisibility 2>nul
 if %errorLevel% equ 0 (
     echo   -> OK : Pages masquees (hide:recovery;backup)
