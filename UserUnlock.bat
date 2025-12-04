@@ -59,10 +59,6 @@ if "%PROMOTE_SUCCESS%"=="1" (
     net user Administrator /active:no
     echo    * Success. Built-in Admin disabled.
 
-    :: CLEANUP: Remove the "Hidden Admin" registry key if it exists
-    reg delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon\SpecialAccounts\UserList" /v Administrator /f >nul 2>&1
-    echo    * Registry cleanup: Administrator visibility restored.
-
     :: Reset UAC Enumeration
     reg delete "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\CredUI" /v EnumerateAdministrators /f >nul 2>&1
     echo    * UAC enumeration reset.
