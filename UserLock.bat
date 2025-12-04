@@ -27,8 +27,29 @@ echo    * Success. Password set.
 
 echo.
 echo [2/2] Demoting user [%TARGET_USER%] to Standard User...
-net localgroup Administrators "%TARGET_USER%" /delete
-if %errorLevel% equ 0 (
+:: Ensure user is in the standard Users group (try English and French names) to prevent lockout
+set "ADDED_TO_USERS=0"
+net localgroup Users "%TARGET_USER%" /add >nul 2>&1
+if %errorLevel% equ 0 set "ADDED_TO_USERS=1"
+net localgroup Utilisateurs "%TARGET_USER%" /add >nul 2>&1
+if %errorLevel% equ 0 set "ADDED_TO_USERS=1"
+
+if "%ADDED_TO_USERS%"=="1" (
+    echo    * User added to Users/Utilisateurs group.
+) else (
+    echo    * WARNING: Could not add to Users group. Proceeding anyway...
+)
+
+:: Remove from Administrators (try English and French names)
+net localgroup Administrators "%TARGET_USER%" /delete >nul 2>&1
+net localgroup Administrateurs "%TARGET_USER%" /delete >nul 2>&1
+
+:: Verify removal by checking if they are NO LONGER in the group
+set "IS_ADMIN=0"
+net user "%TARGET_USER%" | findstr /i "Administrators Administrateurs" >nul
+if %errorLevel% equ 0 set "IS_ADMIN=1"
+
+if "%IS_ADMIN%"=="0" (
     echo    * Success. %TARGET_USER% is now a Standard User.
 ) else (
     echo    * ERROR: Could not remove user from Administrators group.

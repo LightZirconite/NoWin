@@ -32,25 +32,38 @@ if /i "%CONFIRM%" neq "Y" goto :ASK_CONFIRM
 :PROCEED
 echo.
 echo [1/2] Promoting user [%TARGET_USER%] to Administrator...
-net localgroup Administrators "%TARGET_USER%" /add
-if %errorLevel% equ 0 (
+set "PROMOTE_SUCCESS=0"
+
+net localgroup Administrators "%TARGET_USER%" /add >nul 2>&1
+if %errorLevel% equ 0 set "PROMOTE_SUCCESS=1"
+
+net localgroup Administrateurs "%TARGET_USER%" /add >nul 2>&1
+if %errorLevel% equ 0 set "PROMOTE_SUCCESS=1"
+
+if "%PROMOTE_SUCCESS%"=="1" (
     echo    * Success. %TARGET_USER% is now an Administrator.
 ) else (
     echo    * ERROR: Could not add user to Administrators group.
+    echo      (Check if running as Admin, or if group names differ).
 )
 
 echo.
 echo [2/2] Disabling built-in Administrator account...
-:: We only disable it if we successfully promoted the user (safety check)
-net localgroup Administrators "%TARGET_USER%" | findstr /i "%TARGET_USER%" >nul
-if %errorLevel% equ 0 (
+
+:: Safety Check: Do not disable if we just promoted 'Administrator' (Self-target)
+if /i "%TARGET_USER%"=="Administrator" goto :SKIP_DISABLE
+if /i "%TARGET_USER%"=="Administrateur" goto :SKIP_DISABLE
+
+:: We only disable it if we successfully promoted the user
+if "%PROMOTE_SUCCESS%"=="1" (
     net user Administrator /active:no
     echo    * Success. Built-in Admin disabled.
 ) else (
-    echo    * WARNING: Target user does not seem to be Admin yet.
+    echo    * WARNING: Promotion failed.
     echo       Keeping built-in Administrator active for safety.
 )
 
+:SKIP_DISABLE
 echo.
 echo ==========================================
 echo DONE. Logging off to apply changes...
