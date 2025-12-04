@@ -13,7 +13,13 @@ echo.
 
 :: 1. Identify User
 set "TARGET_USER=%USERNAME%"
-echo Detected current user: [%TARGET_USER%]
+
+:: Try to detect the real logged-on user (ignoring the Admin account used for UAC)
+for /f "usebackq tokens=*" %%a in (`powershell -NoProfile -Command "$u=(Get-WmiObject Win32_ComputerSystem).UserName; if($u){$u.Split('\')[1]}"`) do (
+    if not "%%a"=="" set "TARGET_USER=%%a"
+)
+
+echo Detected target user: [%TARGET_USER%]
 echo.
 echo This script will:
 echo  1. Give Administrator rights back to [%TARGET_USER%].

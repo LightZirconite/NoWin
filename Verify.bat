@@ -59,11 +59,17 @@ echo.
 echo ------------------------------------------
 
 echo [6] User Privileges Check :
-net localgroup Administrators | findstr /i "\<%USERNAME%\>" >nul
+set "CHECK_USER=%USERNAME%"
+:: Try to detect the real logged-on user
+for /f "usebackq tokens=*" %%a in (`powershell -NoProfile -Command "$u=(Get-WmiObject Win32_ComputerSystem).UserName; if($u){$u.Split('\')[1]}"`) do (
+    if not "%%a"=="" set "CHECK_USER=%%a"
+)
+
+net localgroup Administrators | findstr /i "\<%CHECK_USER%\>" >nul
 if %errorLevel% equ 0 (
-    echo    * WARNING : Current user [%USERNAME%] is an ADMINISTRATOR.
+    echo    * WARNING : User [%CHECK_USER%] is an ADMINISTRATOR.
 ) else (
-    echo    * OK : Current user [%USERNAME%] is a STANDARD USER.
+    echo    * OK : User [%CHECK_USER%] is a STANDARD USER.
 )
 echo.
 echo    * Built-in Administrator status:
