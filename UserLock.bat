@@ -25,15 +25,9 @@ if %errorLevel% neq 0 (
 )
 echo    * Success. Password set.
 
-:: Hide Administrator from Login Screen (SpecialAccounts)
-echo.
-echo [1.5] Hiding Administrator from Login Screen...
-reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon\SpecialAccounts\UserList" /v Administrator /t REG_DWORD /d 0 /f >nul 2>&1
-if %errorLevel% equ 0 (
-    echo    * Success. Administrator account hidden from login screen.
-) else (
-    echo    * WARNING: Failed to hide Administrator account.
-)
+:: NOTE: We do NOT hide the Administrator account anymore.
+:: Hiding it via SpecialAccounts causes the UAC "No" button issue (lockout)
+:: because Windows thinks there are no active admins available.
 
 echo.
 echo [1.6] Optimizing UAC (Show Admin List)...
