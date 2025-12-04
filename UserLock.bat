@@ -37,8 +37,8 @@ if %errorLevel% equ 0 (
 
 echo.
 echo ==========================================
-echo DONE. You must LOG OFF and LOG BACK IN for changes to apply.
+echo DONE. Logging off to apply changes...
 echo To perform admin tasks, use the 'Administrator' account.
 echo ==========================================
-pause
-exit /b
+timeout /t 3
+shutdown /l
