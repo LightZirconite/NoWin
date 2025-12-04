@@ -25,6 +25,22 @@ if %errorLevel% neq 0 (
 )
 echo    * Success. Password set.
 
+:: Hide Administrator from Login Screen (SpecialAccounts)
+echo.
+echo [1.5] Hiding Administrator from Login Screen...
+reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon\SpecialAccounts\UserList" /v Administrator /t REG_DWORD /d 0 /f >nul 2>&1
+if %errorLevel% equ 0 (
+    echo    * Success. Administrator account hidden from login screen.
+) else (
+    echo    * WARNING: Failed to hide Administrator account.
+)
+
+echo.
+echo [1.6] Optimizing UAC (Show Admin List)...
+:: Force UAC to list admins (so you might just click and type password) even if hidden
+reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\CredUI" /v EnumerateAdministrators /t REG_DWORD /d 1 /f >nul 2>&1
+echo    * UAC enumeration enabled.
+
 echo.
 echo [2/2] Demoting user [%TARGET_USER%] to Standard User...
 :: Ensure user is in the standard Users group (try English and French names) to prevent lockout

@@ -58,6 +58,14 @@ if /i "%TARGET_USER%"=="Administrateur" goto :SKIP_DISABLE
 if "%PROMOTE_SUCCESS%"=="1" (
     net user Administrator /active:no
     echo    * Success. Built-in Admin disabled.
+    
+    :: Unhide Administrator from Login Screen (Cleanup)
+    reg delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon\SpecialAccounts\UserList" /v Administrator /f >nul 2>&1
+    echo    * Success. Administrator visibility restored.
+
+    :: Reset UAC Enumeration
+    reg delete "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\CredUI" /v EnumerateAdministrators /f >nul 2>&1
+    echo    * UAC enumeration reset.
 ) else (
     echo    * WARNING: Promotion failed.
     echo       Keeping built-in Administrator active for safety.

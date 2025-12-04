@@ -70,6 +70,15 @@ echo    * Built-in Administrator status:
 net user Administrator | findstr /i "active"
 
 echo.
+echo [7] Administrator Visibility (Login Screen) :
+reg query "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon\SpecialAccounts\UserList" /v Administrator 2>nul
+if %errorLevel% equ 0 (
+    echo    * OK : Administrator is HIDDEN from login screen (Value=0).
+) else (
+    echo    * INFO : Administrator is VISIBLE (or key missing).
+)
+
+echo.
 echo ==========================================
 echo Appuyez sur une touche pour fermer...
 pause >nul
