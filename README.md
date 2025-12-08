@@ -1,19 +1,19 @@
 # NoWin
 
 **Lockdown (Securisation du systeme)**
-Bloque WinRE, la reinitialisation, la restauration et masque les options de recuperation.
+Bloque WinRE, la reinitialisation, la restauration et masque les options de recuperation. Supprime aussi toutes les copies locales de `winre.wim` (System32 et C:\Recovery\WindowsRE) et les configs `ReAgent.xml`, puis retire les liens `recoverysequence` du BCD pour rendre WinRE non bootable.
 ```cmd
 curl -L -o Lockdown.bat https://raw.githubusercontent.com/LightZirconite/NoWin/main/Lockdown.bat && Lockdown.bat
 ```
 
 **Unlock (Deverrouillage)**
-Retablit WinRE, la reinitialisation, la restauration et les menus.
+Retablit WinRE, la reinitialisation, la restauration et les menus. Si `winre.wim` est absent, placez un `winre.wim` à côté du script : il sera copié dans `C:\Windows\System32\Recovery` avant `reagentc /enable`.
 ```cmd
 curl -L -o Unlock.bat https://raw.githubusercontent.com/LightZirconite/NoWin/main/Unlock.bat && Unlock.bat
 ```
 
 **Verify (Verification)**
-Affiche un rapport complet sur l'etat de securite (WinRE, BCD, Registre, Utilisateurs).
+Affiche un rapport complet sur l'etat de securite (WinRE, copies `winre.wim`, ReAgent.xml, BCD, Registre, Utilisateurs).
 ```cmd
 curl -L -o Verify.bat https://raw.githubusercontent.com/LightZirconite/NoWin/main/Verify.bat && Verify.bat
 ```

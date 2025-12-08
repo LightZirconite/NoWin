@@ -8,6 +8,24 @@ if %errorLevel% neq 0 (
 
 :: 1. Enable WinRE
 echo [1] Enabling WinRE...
+set "WINRE_TARGET=C:\Windows\System32\Recovery\winre.wim"
+set "WINRE_SOURCE=%~dp0winre.wim"
+
+if not exist "C:\Windows\System32\Recovery" mkdir "C:\Windows\System32\Recovery" >nul 2>&1
+
+:: If the image is missing, try to restore it from the same folder as this script
+if not exist "%WINRE_TARGET%" (
+    if exist "%WINRE_SOURCE%" (
+        echo    * Restoring winre.wim from script directory...
+        copy /y "%WINRE_SOURCE%" "%WINRE_TARGET%" >nul
+        if %errorLevel% equ 0 (echo       * winre.wim restored.) else (echo       * Failed to copy winre.wim.)
+    ) else (
+        echo    * WARNING: winre.wim is missing. reagentc /enable will fail.
+        echo      Place a valid winre.wim next to this script or copy it from Windows install media:
+        echo      - Mount ISO/USB, locate sources\install.wim, and extract \Windows\System32\Recovery\winre.wim
+    )
+)
+
 reagentc /enable
 if %errorLevel% equ 0 (echo    * WinRE enabled.) else (echo    * WinRE enable failed. Image might be missing.)
 

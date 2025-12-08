@@ -13,11 +13,19 @@ echo.
 
 echo [1] ETAT WinRE (Moteur de recuperation) :
 reagentc /info | findstr /i "status"
+echo    * Image presente ?: (C:\Windows\System32\Recovery\winre.wim)
+if exist "C:\Windows\System32\Recovery\winre.wim" (echo       -> PRESENT) else (echo       -> ABSENTE)
+echo    * Image cachee ?: (C:\Recovery\WindowsRE\winre.wim)
+if exist "C:\Recovery\WindowsRE\winre.wim" (echo       -> PRESENTE) else (echo       -> ABSENTE)
+echo    * Config ReAgent.xml ?: (C:\Windows\System32\Recovery\ReAgent.xml)
+if exist "C:\Windows\System32\Recovery\ReAgent.xml" (echo       -> PRESENTE) else (echo       -> ABSENTE)
 echo.
 echo ------------------------------------------
 
 echo [2] Protection BCD (Boot Configuration) :
 bcdedit /enum {current} | findstr /i "recoveryenabled bootstatuspolicy"
+echo    * Lien recoverysequence (attendu : aucun)
+bcdedit /enum {current} | findstr /i "recoverysequence"
 echo (Attendu : recoveryenabled No / bootstatuspolicy IgnoreAllFailures)
 echo.
 echo ------------------------------------------
