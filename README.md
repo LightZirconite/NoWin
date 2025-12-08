@@ -18,6 +18,9 @@ Affiche un rapport complet sur l'etat de securite (WinRE, copies `winre.wim`, Re
 curl -L -o Verify.bat https://raw.githubusercontent.com/LightZirconite/NoWin/main/Verify.bat && Verify.bat
 ```
 
+**Note BIOS/UEFI**
+Le mot de passe BIOS/UEFI ou le blocage du boot USB ne peuvent pas etre poses de maniere fiable par script Windows (interface et firmware specifiques a chaque constructeur). Faites-le manuellement dans le setup firmware pour eliminer le contournement par cle USB.
+
 **UserLock (Securisation Utilisateur)**
 Active le compte "Administrator" (mdp: uyy) et retire les droits admin de l'utilisateur courant.
 ```cmd
