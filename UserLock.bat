@@ -162,8 +162,12 @@ if %errorLevel% neq 0 (
     exit /b
 )
 
-echo    * Administrator active et VISIBLE (pour UAC). Mdp: %ADMIN_PASS%
-echo    * Le compte apparaitra dans les popups d'elevation.
+:: HIDE Administrator from LOGIN SCREEN ONLY (still visible in UAC!)
+reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon\SpecialAccounts\UserList" /v Administrator /t REG_DWORD /d 0 /f >nul 2>&1
+
+echo    * Administrator active, CACHE de l'ecran login.
+echo    * VISIBLE dans UAC (entrez mdp: %ADMIN_PASS%).
+echo    * Utilisez le Lanceur Admin pour lancer des apps.
 
 :: =============================================
 :: SECTION 3B: CREATE HIDDEN INSTALLER ACCOUNT (if install allowed)
@@ -179,9 +183,11 @@ if "%ALLOW_INSTALL%"=="1" (
     :: Add to Administrators group (using detected group name)
     net localgroup "!ADMIN_GROUP!" Support /add >nul 2>&1
     
-    echo    * Compte "Support" cree avec le meme mot de passe.
-    echo    * L'utilisateur peut installer en selectionnant "Support" dans l'UAC.
-    echo    * Le compte est VISIBLE pour permettre l'utilisation dans UAC.
+    :: HIDE Support from LOGIN SCREEN ONLY (still visible in UAC!)
+    reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon\SpecialAccounts\UserList" /v Support /t REG_DWORD /d 0 /f >nul 2>&1
+    
+    echo    * Compte "Support" cree, CACHE de l'ecran login.
+    echo    * VISIBLE dans UAC (meme mot de passe que !TARGET_USER!).
 )
 
 :: =============================================
@@ -497,26 +503,28 @@ echo  [X] Installation: BLOQUEE
 )
 echo.
 echo ==========================================
-echo    COMPTES ADMINISTRATEUR
+echo    COMPTES ADMINISTRATEUR (CACHES ECRAN LOGIN)
 echo ==========================================
 echo.
-echo  Compte: Administrator (visible dans UAC)
-echo  Mdp: %ADMIN_PASS%
+echo  Compte: Administrator
+echo    - CACHE de l'ecran de connexion
+echo    - VISIBLE dans les popups UAC
+echo    - Accessible via Lanceur Admin (mot de passe en console)
+echo    - Mdp: %ADMIN_PASS%
 if "%ALLOW_INSTALL%"=="1" (
 echo.
-echo  Compte: Support (pour installation, visible dans UAC)
-echo  Mdp: [meme que !TARGET_USER!]
+echo  Compte: Support
+echo    - CACHE de l'ecran de connexion  
+echo    - VISIBLE dans les popups UAC
+echo    - L'utilisateur peut installer avec SON mot de passe
 )
 echo.
 echo ==========================================
 echo.
-echo IMPORTANT:
-echo  - Administrator apparait dans les popups UAC
-echo  - Utilisez le mot de passe "%ADMIN_PASS%" pour elever
-echo  - Le "Lanceur Admin" permet de lancer des apps elevees
-echo.
-echo NOTE: Connexion admin possible via:
-echo   Win+R puis: runas /user:Administrator cmd
+echo COMMENT UTILISER:
+echo  1. Lanceur Admin (bureau) = mot de passe en console
+echo  2. Popup UAC = selectionnez Administrator, mdp: %ADMIN_PASS%
+echo  3. Console: runas /user:Administrator cmd
 echo.
 echo ==========================================
 echo    IMPORTANT: DECONNEXION REQUISE

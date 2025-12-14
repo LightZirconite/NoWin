@@ -255,14 +255,14 @@ echo.
 echo    Compte Administrator integre:
 net user Administrator 2>nul | findstr /i "active"
 
-:: Check if Administrator is hidden from login screen (should be VISIBLE for UAC)
+:: Check if Administrator is hidden from login screen (should be hidden, but visible in UAC)
 set "ADMIN_HIDDEN=0"
 reg query "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon\SpecialAccounts\UserList" /v Administrator 2>nul | findstr "0x0" >nul
 if %errorLevel% equ 0 set "ADMIN_HIDDEN=1"
 if "!ADMIN_HIDDEN!"=="1" (
-    echo    * [!] Administrator CACHE (problematique pour UAC^)
+    echo    * [OK] Administrator CACHE ecran login (visible UAC^)
 ) else (
-    echo    * [OK] Administrator VISIBLE (correct pour UAC^)
+    echo    * [!] Administrator VISIBLE partout
 )
 echo.
 
