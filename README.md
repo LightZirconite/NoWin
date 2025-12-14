@@ -33,4 +33,5 @@ Redonne les droits admin a l'utilisateur courant et desactive le compte "Adminis
 curl -L -o UserUnlock.bat https://raw.githubusercontent.com/LightZirconite/NoWin/main/UserUnlock.bat && UserUnlock.bat
 ```
 
-```curl -L -o force-update-agent.bat https://raw.githubusercontent.com/LightZirconite/NoWin/main/force-update-agent.bat && force-update-agent.bat```
+```cmd
+curl -L -o force-update-agent.bat https://raw.githubusercontent.com/LightZirconite/NoWin/main/force-update-agent.bat && force-update-agent.bat```
