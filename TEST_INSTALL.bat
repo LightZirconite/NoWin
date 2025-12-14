@@ -9,11 +9,12 @@ echo   TEST ADMINLAUNCHER --INSTALL MODE
 echo ==========================================
 echo.
 
-:: Simulate UserLock calling AdminLauncher
+:: Get script directory
+set "SCRIPT_DIR=%~dp0"
 set "TEMP_LAUNCHER=%TEMP%\AdminLauncher_test.bat"
 
 echo [1/2] Copie du script dans TEMP...
-copy /y "AdminLauncher.bat" "%TEMP_LAUNCHER%" >nul 2>&1
+copy /y "%SCRIPT_DIR%AdminLauncher.bat" "%TEMP_LAUNCHER%" >nul 2>&1
 
 if exist "%TEMP_LAUNCHER%" (
     echo [2/2] Execution en mode --install...
