@@ -74,6 +74,33 @@ start "" "%INSTALLED_PATH%"
 exit /b
 
 :: =============================================
+:: SPLASH SCREEN
+:: =============================================
+:SHOW_SPLASH
+set "FRAMES=[=     ] [==    ] [===   ] [====  ] [===== ] [======]"
+for %%A in (%FRAMES%) do (
+    cls
+    echo.
+    echo ==============================================
+    echo             NoWin Admin Launcher
+    echo ==============================================
+    echo.
+    echo    Preparing... %%~A
+    timeout /t 1 /nobreak >nul
+)
+
+cls
+echo.
+echo ==========================================================
+echo                   LANCEUR ADMIN - NOWIN
+echo ==========================================================
+echo           Access rapides et scripts systeme
+echo ==========================================================
+echo.
+timeout /t 1 /nobreak >nul
+exit /b
+
+:: =============================================
 :: SELF-INSTALLATION
 :DO_INSTALL
 :: =============================================
@@ -200,6 +227,11 @@ echo.
 echo ==========================================================
 echo.
 set /p "CHOICE=Choisissez une option: "
+
+if not defined SPLASH_DONE (
+    call :SHOW_SPLASH
+    set "SPLASH_DONE=1"
+)
 
 if /i "%CHOICE%"=="0" exit /b
 if /i "%CHOICE%"=="1" set "APP=control.exe" & set "APPNAME=Panneau de configuration" & goto :LAUNCH
