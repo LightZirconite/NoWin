@@ -72,22 +72,20 @@ echo.
 echo Detection de l'utilisateur a restaurer...
 echo.
 
-:: Get list of admin users using detected group name
-set "ADMIN_USERS="
-for /f "skip=6 tokens=1" %%a in ('net localgroup "!ADMIN_GROUP!" 2^>nul') do (
-    if not "%%a"=="The" if not "%%a"=="La" set "ADMIN_USERS=!ADMIN_USERS! %%a"
-)
-
-:: Detect the first NON-Administrator standard user using PowerShell (more reliable)
+:: Method 1: Get current logged-in user from explorer.exe owner
 set "TARGET_USER="
-for /f "tokens=*" %%u in ('powershell -NoProfile -Command "$admins = @(); try {net localgroup '!ADMIN_GROUP!' 2^>$null ^| Select-Object -Skip 6 ^| ForEach-Object {if($_ -match '^(\S+)'){$admins += $matches[1]}}} catch {}; $users = Get-LocalUser ^| Where-Object {$_.Enabled -and $_.Name -notmatch 'Administrator^|Guest^|DefaultAccount^|WDAGUtilityAccount^|Support' -and $admins -notcontains $_.Name}; if($users){($users ^| Select-Object -First 1).Name}"') do (
-    if not "%%u"=="" set "TARGET_USER=%%u"
+for /f "usebackq tokens=*" %%u in (`powershell -NoProfile -Command "(Get-WmiObject Win32_Process -Filter 'Name=''explorer.exe''' -ErrorAction SilentlyContinue | Select-Object -First 1).GetOwner().User"`) do (
+    set "TARGET_USER=%%u"
 )
 
-:: Fallback: if no standard user found, check explorer.exe owner
+:: Filter out admin accounts
+if /i "!TARGET_USER!"=="Administrator" set "TARGET_USER="
+if /i "!TARGET_USER!"=="Administrateur" set "TARGET_USER="
+
+:: Method 2: If no explorer or admin, get first enabled non-system local user
 if not defined TARGET_USER (
-    for /f "tokens=*" %%u in ('powershell -NoProfile -Command "$p = Get-Process explorer -ErrorAction SilentlyContinue ^| Select-Object -First 1; if($p){$proc = Get-CimInstance Win32_Process ^| Where-Object {$_.ProcessId -eq $p.Id}; if($proc){$owner = Invoke-CimMethod -InputObject $proc -MethodName GetOwner; $owner.User}}"') do (
-        if not "%%u"=="" if /i not "%%u"=="Administrator" set "TARGET_USER=%%u"
+    for /f "usebackq tokens=*" %%u in (`powershell -NoProfile -Command "Get-LocalUser | Where-Object {$_.Enabled -eq $true -and $_.Name -notmatch '^(Administrator|Administrateur|Guest|DefaultAccount|WDAGUtilityAccount|Support)$'} | Select-Object -First 1 -ExpandProperty Name"`) do (
+        set "TARGET_USER=%%u"
     )
 )
 
@@ -107,11 +105,11 @@ if not defined TARGET_USER (
 
 :: Get the SID of target user for registry operations
 set "TARGET_SID="
-for /f "tokens=*" %%s in ('powershell -NoProfile -Command "$u = Get-LocalUser -Name '!TARGET_USER!' -ErrorAction SilentlyContinue; if($u){$u.SID.Value}"') do (
+for /f "usebackq tokens=*" %%s in (`powershell -NoProfile -Command "(Get-LocalUser -Name '!TARGET_USER!' -ErrorAction SilentlyContinue).SID.Value"`) do (
     set "TARGET_SID=%%s"
 )
 
-echo Utilisateur STANDARD detecte: [!TARGET_USER!]
+echo Utilisateur detecte: [!TARGET_USER!]
 if defined TARGET_SID echo    * SID: !TARGET_SID!
 echo.
 echo Ce script va:

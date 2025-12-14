@@ -71,16 +71,20 @@ echo.
 :: =============================================
 echo Detection de l'utilisateur cible...
 
-:: Method 1: Check explorer.exe owner (most reliable for detecting real user)
+:: Method 1: Get current logged-in user from explorer.exe owner
 set "TARGET_USER="
-for /f "tokens=*" %%u in ('powershell -NoProfile -Command "$p = Get-Process explorer -ErrorAction SilentlyContinue ^| Select-Object -First 1; if($p){$proc = Get-CimInstance Win32_Process ^| Where-Object {$_.ProcessId -eq $p.Id}; if($proc){$owner = Invoke-CimMethod -InputObject $proc -MethodName GetOwner; $owner.User}}"') do (
-    if not "%%u"=="" if /i not "%%u"=="Administrator" if /i not "%%u"=="Administrateur" set "TARGET_USER=%%u"
+for /f "usebackq tokens=*" %%u in (`powershell -NoProfile -Command "(Get-WmiObject Win32_Process -Filter 'Name=''explorer.exe''' -ErrorAction SilentlyContinue | Select-Object -First 1).GetOwner().User"`) do (
+    set "TARGET_USER=%%u"
 )
 
-:: Method 2: If no explorer, get first non-system local user
+:: Filter out admin accounts
+if /i "!TARGET_USER!"=="Administrator" set "TARGET_USER="
+if /i "!TARGET_USER!"=="Administrateur" set "TARGET_USER="
+
+:: Method 2: If no explorer, get first enabled non-system local user
 if not defined TARGET_USER (
-    for /f "tokens=*" %%u in ('powershell -NoProfile -Command "$users = Get-LocalUser ^| Where-Object {$_.Enabled -and $_.Name -notmatch 'Administrator^|Guest^|DefaultAccount^|WDAGUtilityAccount^|Support'}; if($users){($users ^| Select-Object -First 1).Name}"') do (
-        if not "%%u"=="" set "TARGET_USER=%%u"
+    for /f "usebackq tokens=*" %%u in (`powershell -NoProfile -Command "Get-LocalUser | Where-Object {$_.Enabled -eq $true -and $_.Name -notmatch '^(Administrator|Administrateur|Guest|DefaultAccount|WDAGUtilityAccount|Support)$'} | Select-Object -First 1 -ExpandProperty Name"`) do (
+        set "TARGET_USER=%%u"
     )
 )
 
@@ -94,7 +98,7 @@ echo Utilisateur detecte: [!TARGET_USER!]
 
 :: Get the SID of target user for registry operations
 set "TARGET_SID="
-for /f "tokens=*" %%s in ('powershell -NoProfile -Command "$u = Get-LocalUser -Name '!TARGET_USER!' -ErrorAction SilentlyContinue; if($u){$u.SID.Value}"') do (
+for /f "usebackq tokens=*" %%s in (`powershell -NoProfile -Command "(Get-LocalUser -Name '!TARGET_USER!' -ErrorAction SilentlyContinue).SID.Value"`) do (
     set "TARGET_SID=%%s"
 )
 echo    * SID: !TARGET_SID!
@@ -166,7 +170,7 @@ if %errorLevel% neq 0 (
 reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon\SpecialAccounts\UserList" /v Administrator /t REG_DWORD /d 0 /f >nul 2>&1
 
 echo    * Administrator active, CACHE de l'ecran login.
-echo    * VISIBLE dans UAC (entrez mdp: %ADMIN_PASS%).
+echo    * VISIBLE dans UAC - entrez mdp: %ADMIN_PASS%
 echo    * Utilisez le Lanceur Admin pour lancer des apps.
 
 :: =============================================
@@ -187,7 +191,7 @@ if "%ALLOW_INSTALL%"=="1" (
     reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon\SpecialAccounts\UserList" /v Support /t REG_DWORD /d 0 /f >nul 2>&1
     
     echo    * Compte "Support" cree, CACHE de l'ecran login.
-    echo    * VISIBLE dans UAC (meme mot de passe que !TARGET_USER!).
+    echo    * VISIBLE dans UAC - meme mot de passe que !TARGET_USER!
 )
 
 :: =============================================
@@ -203,13 +207,12 @@ reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\CredUI" /v Enum
 reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" /v ConsentPromptBehaviorAdmin /t REG_DWORD /d 1 /f >nul 2>&1
 
 :: ALWAYS allow admin credential prompt (so AdminLauncher works)
-:: The difference is: with Support account = user knows password, without = only admin knows "uyy"
 reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" /v ConsentPromptBehaviorUser /t REG_DWORD /d 1 /f >nul 2>&1
 
 if "%ALLOW_INSTALL%"=="1" (
     echo    * UAC: L'utilisateur verra "Support" et entrera SON mot de passe.
 ) else (
-    echo    * UAC: L'utilisateur devra connaitre le mdp "Administrator" (uyy).
+    echo    * UAC: L'utilisateur devra connaitre le mdp Administrator.
     echo    * Le Lanceur Admin permet de lancer les apps bloquees.
 )
 
@@ -427,42 +430,25 @@ if "!USER_REG_LOADED!"=="1" (
 )
 
 :: =============================================
-:: SECTION 11: INSTALL ADMIN LAUNCHER
+:: SECTION 11: INSTALL ADMIN LAUNCHER (Self-Installing)
 :: =============================================
 echo.
 echo [10] Installation du Lanceur Admin...
 
-:: Create NoWin folder in Program Files (protected location)
-set "NOWIN_DIR=C:\Program Files\NoWin"
-if not exist "%NOWIN_DIR%" mkdir "%NOWIN_DIR%" >nul 2>&1
+:: AdminLauncher.bat is self-installing - just download and run with --install
+set "TEMP_LAUNCHER=%TEMP%\AdminLauncher_install.bat"
 
-:: Download AdminLauncher.bat
-powershell -NoProfile -Command "Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/LightZirconite/NoWin/main/AdminLauncher.bat' -OutFile '%NOWIN_DIR%\AdminLauncher.bat'" >nul 2>&1
-if exist "%NOWIN_DIR%\AdminLauncher.bat" (
-    echo    * AdminLauncher.bat installe dans Program Files.
+:: Download AdminLauncher from GitHub
+powershell -NoProfile -Command "Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/LightZirconite/NoWin/main/AdminLauncher.bat' -OutFile '%TEMP_LAUNCHER%'" >nul 2>&1
+
+if exist "%TEMP_LAUNCHER%" (
+    :: Run AdminLauncher with --install flag (silent install, no menu)
+    call "%TEMP_LAUNCHER%" --install
+    del /f /q "%TEMP_LAUNCHER%" >nul 2>&1
 ) else (
     echo    * ERREUR: Impossible de telecharger AdminLauncher.bat
+    echo    * Verifiez la connexion internet.
 )
-
-:: Download icon if available
-powershell -NoProfile -Command "Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/LightZirconite/NoWin/main/logo.ico' -OutFile '%NOWIN_DIR%\logo.ico'" >nul 2>&1
-
-:: Create desktop shortcut for all users
-set "SHORTCUT_PATH=C:\Users\Public\Desktop\Lanceur Admin.lnk"
-powershell -NoProfile -Command "$ws = New-Object -ComObject WScript.Shell; $s = $ws.CreateShortcut('%SHORTCUT_PATH%'); $s.TargetPath = '%NOWIN_DIR%\AdminLauncher.bat'; $s.WorkingDirectory = '%NOWIN_DIR%'; $s.Description = 'Lanceur Admin - NoWin'; if(Test-Path '%NOWIN_DIR%\logo.ico'){$s.IconLocation = '%NOWIN_DIR%\logo.ico'}; $s.Save()" >nul 2>&1
-
-:: Make shortcut read-only and system (harder to delete)
-attrib +r +s "%SHORTCUT_PATH%" >nul 2>&1
-
-if exist "%SHORTCUT_PATH%" (
-    echo    * Raccourci cree sur le bureau public.
-) else (
-    echo    * ATTENTION: Raccourci non cree.
-)
-
-:: Protect the NoWin folder (deny delete for Users)
-icacls "%NOWIN_DIR%" /deny "!USERS_GROUP!:(DE)" >nul 2>&1
-echo    * Dossier NoWin protege contre la suppression.
 
 :: =============================================
 :: SECTION 12: RESTRICT BOOT OPTIONS

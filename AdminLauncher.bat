@@ -2,21 +2,135 @@
 chcp 65001 >nul 2>&1
 setlocal EnableDelayedExpansion
 :: ============================================
-:: ADMINLAUNCHER.BAT - Launch Apps as Admin via Console
-:: Version 2.5 - No UAC Popup, Password in Terminal
+:: ADMINLAUNCHER.BAT - Self-Installing Admin Launcher
+:: Version 2.6 - Auto-Install + No UAC Popup
 :: ============================================
-:: This script allows launching applications as Administrator
-:: by entering the password directly in the terminal (runas)
-:: This bypasses the UAC popup completely.
+:: This script:
+:: 1. Auto-installs itself to Program Files\NoWin if not already there
+:: 2. Creates a protected desktop shortcut
+:: 3. Launches apps as Administrator via runas (password in terminal)
+::
+:: Usage:
+::   AdminLauncher.bat              - Normal: install if needed, then menu
+::   AdminLauncher.bat --install    - Install only, no menu (for UserLock)
 
 title Lanceur Administrateur - NoWin
 
+:: Check for --install parameter (silent install, no menu)
+set "INSTALL_ONLY=0"
+if /i "%~1"=="--install" set "INSTALL_ONLY=1"
+if /i "%~1"=="-i" set "INSTALL_ONLY=1"
+
+:: =============================================
+:: SECTION 0: SELF-INSTALLATION CHECK
+:: =============================================
+set "INSTALL_DIR=C:\Program Files\NoWin"
+set "SHORTCUT_PATH=C:\Users\Public\Desktop\Lanceur Admin.lnk"
+set "CURRENT_PATH=%~f0"
+set "INSTALLED_PATH=%INSTALL_DIR%\AdminLauncher.bat"
+
+:: If --install mode, always do installation
+if "%INSTALL_ONLY%"=="1" goto :DO_INSTALL
+
+:: Check if we're running from the installed location
+if /i "%CURRENT_PATH%"=="%INSTALLED_PATH%" goto :MENU
+
+:: Not installed - check if installation exists
+if exist "%INSTALLED_PATH%" goto :MENU
+
+:: =============================================
+:: SELF-INSTALLATION
+:DO_INSTALL
+:: =============================================
+if "%INSTALL_ONLY%"=="0" (
+    cls
+    echo.
+    echo ╔══════════════════════════════════════════════════════════╗
+    echo ║        INSTALLATION DU LANCEUR ADMINISTRATEUR            ║
+    echo ╚══════════════════════════════════════════════════════════╝
+    echo.
+    echo Ce script va s'installer dans:
+    echo   %INSTALL_DIR%
+    echo.
+    echo Et creer un raccourci sur le bureau public.
+    echo.
+)
+
+:: Check for admin rights (needed for Program Files)
+net session >nul 2>&1
+if %errorLevel% neq 0 (
+    if "%INSTALL_ONLY%"=="1" (
+        echo [!] Droits administrateur requis pour l'installation.
+        echo     Tentative d'elevation silencieuse...
+        powershell -NoProfile -Command "Start-Process -FilePath '%~f0' -ArgumentList '--install' -Verb RunAs -Wait"
+    ) else (
+        echo [!] Droits administrateur requis pour l'installation.
+        echo     Tentative d'elevation...
+        echo.
+        powershell -NoProfile -Command "Start-Process -FilePath '%~f0' -Verb RunAs"
+    )
+    exit /b
+)
+
+if "%INSTALL_ONLY%"=="0" echo [1/4] Creation du dossier...
+if not exist "%INSTALL_DIR%" mkdir "%INSTALL_DIR%" >nul 2>&1
+
+if "%INSTALL_ONLY%"=="0" echo [2/4] Copie du script...
+copy /y "%~f0" "%INSTALLED_PATH%" >nul 2>&1
+if not exist "%INSTALLED_PATH%" (
+    echo    * ERREUR: Impossible de copier AdminLauncher.bat
+    if "%INSTALL_ONLY%"=="0" pause
+    exit /b 1
+)
+
+if "%INSTALL_ONLY%"=="0" echo [3/4] Telechargement de l'icone...
+powershell -NoProfile -Command "try { Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/LightZirconite/NoWin/main/logo.ico' -OutFile '%INSTALL_DIR%\logo.ico' -ErrorAction Stop } catch { }" >nul 2>&1
+
+if "%INSTALL_ONLY%"=="0" echo [4/4] Creation du raccourci bureau...
+powershell -NoProfile -Command "$ws = New-Object -ComObject WScript.Shell; $s = $ws.CreateShortcut('%SHORTCUT_PATH%'); $s.TargetPath = '%INSTALLED_PATH%'; $s.WorkingDirectory = '%INSTALL_DIR%'; $s.Description = 'Lanceur Admin - NoWin'; if(Test-Path '%INSTALL_DIR%\logo.ico'){$s.IconLocation = '%INSTALL_DIR%\logo.ico'}; $s.Save()" >nul 2>&1
+
+:: Protect shortcut (read-only + system)
+attrib +r +s "%SHORTCUT_PATH%" >nul 2>&1
+
+:: Protect folder (deny delete for Users group)
+:: Get Users group name dynamically
+for /f "tokens=*" %%g in ('powershell -NoProfile -Command "(New-Object System.Security.Principal.SecurityIdentifier('S-1-5-32-545')).Translate([System.Security.Principal.NTAccount]).Value.Split('\')[-1]"') do (
+    icacls "%INSTALL_DIR%" /deny "%%g:(DE)" >nul 2>&1
+)
+
+:: Show success message
+if "%INSTALL_ONLY%"=="1" (
+    echo    * AdminLauncher installe dans Program Files.
+    echo    * Raccourci cree sur le bureau public.
+    echo    * Dossier protege contre la suppression.
+    exit /b 0
+)
+
+echo.
+echo ══════════════════════════════════════════════════════════
+echo   INSTALLATION TERMINEE !
+echo ══════════════════════════════════════════════════════════
+echo.
+echo   * Script installe dans: %INSTALL_DIR%
+echo   * Raccourci cree sur le bureau public
+echo   * Dossier protege contre la suppression
+echo.
+echo   Vous pouvez maintenant utiliser le raccourci
+echo   "Lanceur Admin" sur le bureau.
+echo.
+echo ══════════════════════════════════════════════════════════
+echo.
+pause
+goto :MENU
+
+:: =============================================
+:: MAIN MENU
+:: =============================================
 :MENU
 cls
 echo.
 echo ╔══════════════════════════════════════════════════════════╗
 echo ║           LANCEUR ADMINISTRATEUR - NoWin                 ║
-echo ║                   (Mot de passe: uyy)                    ║
 echo ╠══════════════════════════════════════════════════════════╣
 echo ║                                                          ║
 echo ║   [1]  Panneau de configuration                          ║
@@ -33,7 +147,8 @@ echo ║   [11] PowerShell (Admin)                                ║
 echo ║   [12] Explorateur de fichiers (Admin)                   ║
 echo ║                                                          ║
 echo ║   [C]  Application personnalisee                         ║
-echo ║   [U]  Lancer UserUnlock (restaurer droits)              ║
+echo ║   [U]  Lancer UserUnlock - restaurer droits              ║
+echo ║   [I]  Reinstaller ce lanceur                            ║
 echo ║                                                          ║
 echo ║   [0]  Quitter                                           ║
 echo ║                                                          ║
@@ -57,6 +172,7 @@ if /i "%CHOICE%"=="12" set "APP=explorer.exe /e," & set "APPNAME=Explorateur" & 
 
 if /i "%CHOICE%"=="C" goto :CUSTOM
 if /i "%CHOICE%"=="U" goto :USERUNLOCK
+if /i "%CHOICE%"=="I" goto :REINSTALL
 
 echo.
 echo Choix invalide. Appuyez sur une touche...
@@ -74,12 +190,10 @@ echo   Lancement: %APPNAME%
 echo ══════════════════════════════════════════════════════════
 echo.
 echo   Entrez le mot de passe Administrator quand demande.
-echo   (Mot de passe par defaut: uyy)
 echo.
 echo ══════════════════════════════════════════════════════════
 echo.
 
-:: Use runas to launch with password prompt in console
 runas /user:Administrator "%APP%"
 
 if %errorLevel% neq 0 (
@@ -104,11 +218,10 @@ goto :MENU
 cls
 echo.
 echo ══════════════════════════════════════════════════════════
-echo   Lancement: %APPNAME% (Admin)
+echo   Lancement: %APPNAME% - Admin
 echo ══════════════════════════════════════════════════════════
 echo.
 echo   Entrez le mot de passe Administrator quand demande.
-echo   (Mot de passe par defaut: uyy)
 echo.
 echo   NOTE: Une nouvelle fenetre va s'ouvrir.
 echo.
@@ -118,7 +231,7 @@ echo.
 if /i "%APP%"=="cmd.exe" (
     runas /user:Administrator "cmd.exe /k title CMD Administrator - NoWin"
 ) else (
-    runas /user:Administrator "powershell.exe -NoExit -Command \"$Host.UI.RawUI.WindowTitle = 'PowerShell Administrator - NoWin'\""
+    runas /user:Administrator "powershell.exe -NoExit -Command $Host.UI.RawUI.WindowTitle='PowerShell Admin - NoWin'"
 )
 
 if %errorLevel% neq 0 (
@@ -158,8 +271,6 @@ if "%CUSTOM_APP%"=="" goto :MENU
 echo.
 echo Lancement de: %CUSTOM_APP%
 echo.
-echo Entrez le mot de passe Administrator (uyy):
-echo.
 
 runas /user:Administrator "%CUSTOM_APP%"
 
@@ -196,11 +307,9 @@ if /i not "%CONFIRM%"=="O" goto :MENU
 echo.
 echo Telechargement de UserUnlock.bat...
 
-:: Create temp directory
 set "TEMP_DIR=%TEMP%\NoWin"
 if not exist "%TEMP_DIR%" mkdir "%TEMP_DIR%"
 
-:: Download UserUnlock.bat
 powershell -NoProfile -Command "Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/LightZirconite/NoWin/main/UserUnlock.bat' -OutFile '%TEMP_DIR%\UserUnlock.bat'" 2>nul
 
 if not exist "%TEMP_DIR%\UserUnlock.bat" (
@@ -215,7 +324,6 @@ if not exist "%TEMP_DIR%\UserUnlock.bat" (
 echo Telechargement OK.
 echo.
 echo Lancement de UserUnlock.bat en tant qu'Administrator...
-echo Entrez le mot de passe Administrator (uyy):
 echo.
 
 runas /user:Administrator "cmd.exe /c \"%TEMP_DIR%\UserUnlock.bat\""
@@ -226,4 +334,39 @@ if %errorLevel% neq 0 (
     echo.
     pause
 )
+goto :MENU
+
+:: =============================================
+:: REINSTALL - Force reinstall
+:: =============================================
+:REINSTALL
+cls
+echo.
+echo ══════════════════════════════════════════════════════════
+echo   REINSTALLATION DU LANCEUR
+echo ══════════════════════════════════════════════════════════
+echo.
+echo   Cette option va re-telecharger et reinstaller
+echo   le Lanceur Admin depuis GitHub.
+echo.
+echo ══════════════════════════════════════════════════════════
+echo.
+set /p "CONFIRM=Confirmer? (O/N): "
+if /i not "%CONFIRM%"=="O" goto :MENU
+
+:: Need admin for Program Files
+net session >nul 2>&1
+if %errorLevel% neq 0 (
+    echo.
+    echo [!] Droits administrateur requis.
+    echo.
+    runas /user:Administrator "powershell -NoProfile -Command \"Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/LightZirconite/NoWin/main/AdminLauncher.bat' -OutFile '%INSTALL_DIR%\AdminLauncher.bat'\""
+) else (
+    echo Telechargement...
+    powershell -NoProfile -Command "Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/LightZirconite/NoWin/main/AdminLauncher.bat' -OutFile '%INSTALL_DIR%\AdminLauncher.bat'" 2>nul
+)
+
+echo.
+echo Reinstallation terminee.
+pause
 goto :MENU

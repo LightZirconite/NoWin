@@ -3,7 +3,7 @@ chcp 65001 >nul 2>&1
 setlocal EnableDelayedExpansion
 :: ============================================
 :: LOCKDOWN.BAT - Ultimate System Recovery Blocker
-:: Version 2.2 - Enhanced Protection + WiFi Lock
+:: Version 2.3 - Enhanced WiFi Protection (cannot disconnect)
 :: ============================================
 :: Check for Administrator privileges
 net session >nul 2>&1
@@ -372,48 +372,37 @@ echo    * Wake-on-LAN enabled.
 echo    * Network adapter will stay powered for remote wake.
 
 :: =============================================
-:: SECTION 13: WIFI PROTECTION (Prevent Disconnect)
+:: SECTION 13: INTERNET PRIORITY - Keep Connected (Allow WiFi Change)
 :: =============================================
 echo.
-echo [13] Locking WiFi Connection...
+echo [13] Internet Priority Protection...
 
-:: 13.1 Block access to Network Connections folder (ncpa.cpl)
-reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" /v NoNetworkConnections /t REG_DWORD /d 1 /f >nul 2>&1
-echo    * Network Connections folder blocked.
-
-:: 13.2 Hide Network icon in system tray (prevents right-click disconnect)
-reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer" /v HideSCANetwork /t REG_DWORD /d 1 /f >nul 2>&1
-echo    * Network tray icon hidden.
-
-:: 13.3 Disable WiFi toggle in Action Center / Quick Settings
-reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\Network Connections" /v NC_ShowSharedAccessUI /t REG_DWORD /d 0 /f >nul 2>&1
-
-:: 13.4 Block netsh commands for non-admins (IFEO)
-reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\netsh.exe" /v Debugger /t REG_SZ /d "cmd.exe /c echo NETSH BLOCKED - Admin required ^& exit" /f >nul 2>&1
-echo    * netsh.exe blocked for non-admins.
-
-:: 13.5 Disable "Disconnect" option in WiFi settings via Group Policy
-reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\Network Connections" /v NC_AllowAdvancedTCPIPConfig /t REG_DWORD /d 0 /f >nul 2>&1
-
-:: 13.6 Block ms-settings:network-wifi page access
-reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" /v SettingsPageVisibility /t REG_SZ /d "hide:recovery;backup;windowsupdate-options;windowsupdate-restartoptions;troubleshoot;network-airplanemode" /f >nul 2>&1
-echo    * Airplane mode settings hidden.
-
-:: 13.7 Disable Airplane Mode toggle
+:: 13.1 Disable Airplane Mode (prevents complete disconnect)
 reg add "HKLM\SOFTWARE\Microsoft\PolicyManager\current\device\Connectivity" /v AllowAirplaneMode /t REG_DWORD /d 0 /f >nul 2>&1
 reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\Connectivity" /v AllowAirplaneMode /t REG_DWORD /d 0 /f >nul 2>&1
 echo    * Airplane Mode disabled.
 
-:: 13.8 Disable WLAN AutoConfig service stop (prevents manual WiFi disable)
-powershell -NoProfile -Command "$svc = Get-Service -Name 'WlanSvc' -ErrorAction SilentlyContinue; if($svc) { Set-Service -Name 'WlanSvc' -StartupType Automatic -ErrorAction SilentlyContinue }" >nul 2>&1
-
-:: 13.9 Prevent disabling network adapters (require admin)
+:: 13.2 Block network adapter disable (prevent turning WiFi off)
 reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\Network Connections" /v NC_LanChangeProperties /t REG_DWORD /d 0 /f >nul 2>&1
 reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\Network Connections" /v NC_EnableAdminProhibits /t REG_DWORD /d 1 /f >nul 2>&1
-echo    * Adapter disable requires admin.
+echo    * WiFi adapter cannot be disabled.
 
-echo    * WiFi protection complete.
-echo    * User can CHANGE WiFi networks but cannot DISCONNECT completely.
+:: 13.3 Keep WLAN AutoConfig service always running
+powershell -NoProfile -Command "$svc = Get-Service -Name 'WlanSvc' -ErrorAction SilentlyContinue; if($svc) { Set-Service -Name 'WlanSvc' -StartupType Automatic -ErrorAction SilentlyContinue; Start-Service -Name 'WlanSvc' -ErrorAction SilentlyContinue }" >nul 2>&1
+
+:: 13.4 Block device manager tools (prevent adapter disable)
+reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\devcon.exe" /v Debugger /t REG_SZ /d "cmd.exe /c echo DEVCON BLOCKED ^& exit" /f >nul 2>&1
+reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\pnputil.exe" /v Debugger /t REG_SZ /d "cmd.exe /c echo PNPUTIL BLOCKED - Admin required ^& exit" /f >nul 2>&1
+echo    * Device control commands blocked.
+
+:: 13.5 Auto-reconnect task: Check internet every 30 seconds
+echo    * Creating auto-reconnect task...
+powershell -NoProfile -WindowStyle Hidden -Command "& {$action = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument '-NoProfile -WindowStyle Hidden -Command \"& { try { $ping = Test-Connection -ComputerName 8.8.8.8 -Count 1 -Quiet -ErrorAction Stop; if (-not $ping) { netsh wlan connect name=(netsh wlan show interfaces | Select-String ''SSID'' | ForEach-Object { $_.ToString().Split('':'')[1].Trim() }) } } catch {} }\"'; $trigger = New-ScheduledTaskTrigger -Once -At (Get-Date) -RepetitionInterval (New-TimeSpan -Minutes 1); $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit (New-TimeSpan -Minutes 1); Register-ScheduledTask -TaskName 'NoWin_InternetGuard' -Action $action -Trigger $trigger -Settings $settings -User 'SYSTEM' -Force | Out-Null}" >nul 2>&1
+echo    * Auto-reconnect task created (checks every 1 min).
+
+echo.
+echo    * Internet priority enabled.
+echo    * User CAN change WiFi network but CANNOT turn WiFi OFF.
 
 :: =============================================
 :: SECTION 14: RESTART EXPLORER
