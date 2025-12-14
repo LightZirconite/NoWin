@@ -1,4 +1,8 @@
 @echo off
+:: ============================================
+:: VERIFY.BAT - Complete System Status Verification
+:: Version 2.2 - Matches Lockdown/UserLock v2.2
+:: ============================================
 :: Check for Administrator privileges
 net session >nul 2>&1
 if %errorLevel% neq 0 (
@@ -6,84 +10,355 @@ if %errorLevel% neq 0 (
     exit /b
 )
 
-echo ==========================================
-echo        VERIFICATION AVANCEE (ULTIMATE)
-echo ==========================================
+echo.
+echo ============================================================
+echo          VERIFICATION COMPLETE DU SYSTEME v2.2
+echo ============================================================
 echo.
 
-echo [1] ETAT WinRE (Moteur de recuperation) :
-reagentc /info | findstr /i "status"
-echo    * Image presente ?: (C:\Windows\System32\Recovery\winre.wim)
-if exist "C:\Windows\System32\Recovery\winre.wim" (echo       -> PRESENT) else (echo       -> ABSENTE)
-echo    * Image cachee ?: (C:\Recovery\WindowsRE\winre.wim)
-if exist "C:\Recovery\WindowsRE\winre.wim" (echo       -> PRESENTE) else (echo       -> ABSENTE)
-echo    * Config ReAgent.xml ?: (C:\Windows\System32\Recovery\ReAgent.xml)
-if exist "C:\Windows\System32\Recovery\ReAgent.xml" (echo       -> PRESENTE) else (echo       -> ABSENTE)
+:: =============================================
+:: SECTION 1: WINRE STATUS
+:: =============================================
+echo [1] ETAT WinRE (Environnement de recuperation) :
+echo ------------------------------------------------------------
+reagentc /info 2>nul | findstr /i "status"
 echo.
-echo ------------------------------------------
-
-echo [2] Protection BCD (Boot Configuration) :
-bcdedit /enum {current} | findstr /i "recoveryenabled bootstatuspolicy"
-echo    * Lien recoverysequence (attendu : aucun)
-bcdedit /enum {current} | findstr /i "recoverysequence"
-echo (Attendu : recoveryenabled No / bootstatuspolicy IgnoreAllFailures)
+echo    Fichiers WinRE:
+echo    * C:\Windows\System32\Recovery\winre.wim
+if exist "C:\Windows\System32\Recovery\winre.wim" (echo       -> [!] PRESENT - Non securise) else (echo       -> [OK] ABSENT)
+echo    * C:\Recovery\WindowsRE\winre.wim
+if exist "C:\Recovery\WindowsRE\winre.wim" (echo       -> [!] PRESENT - Non securise) else (echo       -> [OK] ABSENT)
+echo    * C:\Recovery\ (dossier)
+if exist "C:\Recovery" (echo       -> [!] PRESENT - Non securise) else (echo       -> [OK] ABSENT)
 echo.
-echo ------------------------------------------
+echo    Configuration ReAgent:
+echo    * C:\Windows\System32\Recovery\ReAgent.xml
+if exist "C:\Windows\System32\Recovery\ReAgent.xml" (echo       -> [!] PRESENT) else (echo       -> [OK] ABSENT)
+echo.
 
-echo [3] Blocage Executable (systemreset.exe ^& rstrui.exe) :
-reg query "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\systemreset.exe" /v Debugger 2>nul
+:: =============================================
+:: SECTION 2: BCD STATUS
+:: =============================================
+echo [2] PROTECTION BCD (Boot Configuration) :
+echo ------------------------------------------------------------
+echo    Parametres actuels:
+bcdedit /enum {current} 2>nul | findstr /i "recoveryenabled bootstatuspolicy"
+bcdedit /enum {current} 2>nul | findstr /i "recoverysequence"
+echo.
+echo    Attendu si securise: recoveryenabled=No, bootstatuspolicy=IgnoreAllFailures
+echo    Lien recoverysequence: doit etre absent
+echo.
+echo    Boot timeout:
+bcdedit 2>nul | findstr /i "timeout"
+echo    (0 = securise, >0 = permet acces menu boot)
+echo.
+
+:: =============================================
+:: SECTION 3: USB/EXTERNAL BOOT STATUS
+:: =============================================
+echo [3] BLOCAGE USB / BOOT EXTERNE :
+echo ------------------------------------------------------------
+echo    USB Storage (USBSTOR):
+reg query "HKLM\SYSTEM\CurrentControlSet\Services\USBSTOR" /v Start 2>nul | findstr "Start"
+echo    (Start=4 -> BLOQUE, Start=3 -> ACTIF)
+echo.
+echo    CD/DVD (cdrom):
+reg query "HKLM\SYSTEM\CurrentControlSet\Services\cdrom" /v Start 2>nul | findstr "Start"
+echo    (Start=4 -> BLOQUE, Start=1 -> ACTIF)
+echo.
+
+:: =============================================
+:: SECTION 4: IFEO BLOCKS STATUS
+:: =============================================
+echo [4] BLOCAGE EXECUTABLES (IFEO) :
+echo ------------------------------------------------------------
+
+set "BLOCKED_COUNT=0"
+
+:: Check systemreset.exe
+reg query "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\systemreset.exe" /v Debugger >nul 2>&1
 if %errorLevel% equ 0 (
-    echo    * OK : systemreset.exe neutralise
+    echo    * systemreset.exe       [OK] BLOQUE
+    set /a BLOCKED_COUNT+=1
 ) else (
-    echo    * ATTENTION : systemreset.exe ACTIF
+    echo    * systemreset.exe       [!] ACTIF
 )
-reg query "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\rstrui.exe" /v Debugger 2>nul
-if %errorLevel% equ 0 (
-    echo    * OK : rstrui.exe ^(Restauration^) neutralise
-) else (
-    echo    * ATTENTION : rstrui.exe ACTIF
-)
-echo.
-echo ------------------------------------------
 
-echo [4] System Restore Policy :
+:: Check rstrui.exe
+reg query "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\rstrui.exe" /v Debugger >nul 2>&1
+if %errorLevel% equ 0 (
+    echo    * rstrui.exe            [OK] BLOQUE
+    set /a BLOCKED_COUNT+=1
+) else (
+    echo    * rstrui.exe            [!] ACTIF
+)
+
+:: Check recoverydrive.exe
+reg query "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\recoverydrive.exe" /v Debugger >nul 2>&1
+if %errorLevel% equ 0 (
+    echo    * recoverydrive.exe     [OK] BLOQUE
+    set /a BLOCKED_COUNT+=1
+) else (
+    echo    * recoverydrive.exe     [!] ACTIF
+)
+
+:: Check msconfig.exe
+reg query "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\msconfig.exe" /v Debugger >nul 2>&1
+if %errorLevel% equ 0 (
+    echo    * msconfig.exe          [OK] BLOQUE
+    set /a BLOCKED_COUNT+=1
+) else (
+    echo    * msconfig.exe          [!] ACTIF
+)
+
+:: Check dism.exe
+reg query "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\dism.exe" /v Debugger >nul 2>&1
+if %errorLevel% equ 0 (
+    echo    * dism.exe              [OK] BLOQUE
+    set /a BLOCKED_COUNT+=1
+) else (
+    echo    * dism.exe              [!] ACTIF
+)
+
+:: Check sfc.exe
+reg query "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\sfc.exe" /v Debugger >nul 2>&1
+if %errorLevel% equ 0 (
+    echo    * sfc.exe               [OK] BLOQUE
+    set /a BLOCKED_COUNT+=1
+) else (
+    echo    * sfc.exe               [!] ACTIF
+)
+
+:: Check ReAgentc.exe
+reg query "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\ReAgentc.exe" /v Debugger >nul 2>&1
+if %errorLevel% equ 0 (
+    echo    * ReAgentc.exe          [OK] BLOQUE
+    set /a BLOCKED_COUNT+=1
+) else (
+    echo    * ReAgentc.exe          [!] ACTIF
+)
+
+echo.
+echo    Total executables bloques: %BLOCKED_COUNT%/7
+echo.
+
+:: =============================================
+:: SECTION 5: SYSTEM RESTORE STATUS
+:: =============================================
+echo [5] RESTAURATION SYSTEME :
+echo ------------------------------------------------------------
 reg query "HKLM\SOFTWARE\Policies\Microsoft\Windows NT\SystemRestore" /v DisableSR 2>nul
 if %errorLevel% equ 0 (
-    echo    * OK : Restauration systeme desactivee par GPO
+    echo    * [OK] Restauration systeme desactivee par GPO
 ) else (
-    echo    * INFO : Restauration systeme active
+    echo    * [!] Restauration systeme ACTIVE
 )
 echo.
-echo ------------------------------------------
+echo    Services VSS/SWPRV:
+sc query VSS 2>nul | findstr "STATE"
+sc query swprv 2>nul | findstr "STATE"
+echo    (STOPPED ou DISABLED = securise)
+echo.
 
-echo [5] Masquage Visuel (SettingsPageVisibility) :
+:: =============================================
+:: SECTION 6: SAFE MODE STATUS
+:: =============================================
+echo [6] MODE SANS ECHEC :
+echo ------------------------------------------------------------
+reg query "HKLM\SYSTEM\CurrentControlSet\Control\SafeBoot\Minimal" /v AlternateShell 2>nul
+echo    (Vide ou absent = bloque)
+echo.
+
+:: =============================================
+:: SECTION 7: ADVANCED STARTUP STATUS
+:: =============================================
+echo [7] OPTIONS DE DEMARRAGE AVANCEES :
+echo ------------------------------------------------------------
+reg query "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" /v DisableAdvancedStartup 2>nul
+if %errorLevel% equ 0 (
+    echo    * [OK] Shift+Restart BLOQUE
+) else (
+    echo    * [!] Shift+Restart ACTIF
+)
+echo.
+bcdedit /enum {globalsettings} 2>nul | findstr /i "advancedoptions optionsedit"
+echo    (false = securise)
+echo.
+
+:: =============================================
+:: SECTION 8: UI VISIBILITY STATUS
+:: =============================================
+echo [8] MASQUAGE INTERFACE :
+echo ------------------------------------------------------------
 reg query "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" /v SettingsPageVisibility 2>nul
 if %errorLevel% equ 0 (
-    echo    * OK : Pages masquees ^(hide:recovery;backup^)
+    echo    * [OK] Pages Settings masquees
 ) else (
-    echo    * INFO : Visible
+    echo    * [!] Pages Settings VISIBLES
 )
 echo.
-echo ------------------------------------------
 
-echo [6] User Privileges Check :
+:: =============================================
+:: SECTION 9: USER PRIVILEGES STATUS
+:: =============================================
+echo [9] PRIVILEGES UTILISATEUR :
+echo ------------------------------------------------------------
 set "CHECK_USER=%USERNAME%"
-:: Try to detect the real logged-on user
 for /f "usebackq tokens=*" %%a in (`powershell -NoProfile -Command "$u=(Get-WmiObject Win32_ComputerSystem).UserName; if($u){$u.Split('\')[1]}"`) do (
     if not "%%a"=="" set "CHECK_USER=%%a"
 )
 
-net localgroup Administrators | findstr /i "\<%CHECK_USER%\>" >nul
+echo    Utilisateur actuel: [%CHECK_USER%]
+net localgroup Administrators 2>nul | findstr /i /c:"%CHECK_USER%" >nul
 if %errorLevel% equ 0 (
-    echo    * WARNING : User [%CHECK_USER%] is an ADMINISTRATOR.
+    echo    * [!] ADMINISTRATEUR - Non restreint
 ) else (
-    echo    * OK : User [%CHECK_USER%] is a STANDARD USER.
+    echo    * [OK] UTILISATEUR STANDARD - Restreint
 )
 echo.
-echo    * Built-in Administrator status:
-net user Administrator | findstr /i "active"
+echo    Compte Administrator integre:
+net user Administrator 2>nul | findstr /i "active"
+echo.
+
+:: =============================================
+:: SECTION 10: USER RESTRICTIONS STATUS
+:: =============================================
+echo [10] RESTRICTIONS UTILISATEUR (si UserLock actif) :
+echo ------------------------------------------------------------
+
+:: Control Panel
+reg query "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" /v NoControlPanel 2>nul >nul
+if %errorLevel% equ 0 (
+    echo    * Panneau de configuration    [OK] BLOQUE
+) else (
+    echo    * Panneau de configuration    [!] ACTIF
+)
+
+:: Registry
+reg query "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\System" /v DisableRegistryTools 2>nul >nul
+if %errorLevel% equ 0 (
+    echo    * Editeur de registre         [OK] BLOQUE
+) else (
+    echo    * Editeur de registre         [!] ACTIF
+)
+
+:: Task Manager
+reg query "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\System" /v DisableTaskMgr 2>nul >nul
+if %errorLevel% equ 0 (
+    echo    * Gestionnaire de taches      [OK] BLOQUE
+) else (
+    echo    * Gestionnaire de taches      [!] ACTIF
+)
+
+:: Run
+reg query "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" /v NoRun 2>nul >nul
+if %errorLevel% equ 0 (
+    echo    * Boite Executer              [OK] BLOQUE
+) else (
+    echo    * Boite Executer              [!] ACTIF
+)
+
+:: Date/Time
+reg query "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" /v NoDateTimeControlPanel 2>nul >nul
+if %errorLevel% equ 0 (
+    echo    * Date/Heure                  [OK] BLOQUE
+) else (
+    echo    * Date/Heure                  [!] MODIFIABLE
+)
+
+:: Windows Script Host
+reg query "HKCU\Software\Microsoft\Windows Script Host\Settings" /v Enabled 2>nul >nul
+if %errorLevel% equ 0 (
+    echo    * Windows Script Host         [OK] DESACTIVE
+) else (
+    echo    * Windows Script Host         [!] ACTIF
+)
+
+:: AutoPlay
+reg query "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" /v NoDriveTypeAutoRun 2>nul >nul
+if %errorLevel% equ 0 (
+    echo    * AutoPlay/AutoRun            [OK] DESACTIVE
+) else (
+    echo    * AutoPlay/AutoRun            [!] ACTIF
+)
 
 echo.
-echo ==========================================
-echo Appuyez sur une touche pour fermer...
-pause >nul
+
+:: =============================================
+:: SECTION 11: DEVICE INSTALLATION STATUS
+:: =============================================
+echo [11] INSTALLATION PERIPHERIQUES :
+echo ------------------------------------------------------------
+reg query "HKLM\SOFTWARE\Policies\Microsoft\Windows\DeviceInstall\Restrictions" /v DenyAll 2>nul >nul
+if %errorLevel% equ 0 (
+    echo    * [OK] Installation materiel BLOQUEE
+) else (
+    echo    * [!] Installation materiel AUTORISEE
+)
+echo.
+
+:: =============================================
+:: SECTION 12: POWER/SLEEP STATUS
+:: =============================================
+echo [12] VEILLE / WAKE-ON-LAN :
+echo ------------------------------------------------------------
+echo    Hibernation:
+powercfg /a 2>nul | findstr /i "Hibernate"
+echo.
+echo    Sleep timeouts (AC/DC):
+powercfg /query SCHEME_CURRENT SUB_SLEEP STANDBYIDLE 2>nul | findstr "Power Setting"
+echo    (0x00000000 = Jamais = securise)
+echo.
+echo    Wake-on-LAN (cartes reseau):
+powershell -NoProfile -Command "$a=Get-NetAdapter|Where{$_.Status -eq 'Up'}|Select -First 1; if($a){$wol=Get-NetAdapterPowerManagement -Name $a.Name -ErrorAction SilentlyContinue; if($wol.WakeOnMagicPacket -eq 'Enabled'){'    * [OK] Wake-on-LAN ACTIVE'}else{'    * [!] Wake-on-LAN DESACTIVE'}}else{'    * Aucune carte detectee'}"
+echo.
+
+:: =============================================
+:: SECTION 13: SUMMARY
+:: =============================================
+echo ============================================================
+echo                    RESUME DE SECURITE
+echo ============================================================
+echo.
+
+:: Count protections
+set "LOCKDOWN_SCORE=0"
+set "USERLOCK_SCORE=0"
+
+:: Lockdown checks
+if not exist "C:\Windows\System32\Recovery\winre.wim" set /a LOCKDOWN_SCORE+=1
+reg query "HKLM\SYSTEM\CurrentControlSet\Services\USBSTOR" /v Start 2>nul | findstr "0x4" >nul && set /a LOCKDOWN_SCORE+=1
+reg query "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\systemreset.exe" /v Debugger >nul 2>&1 && set /a LOCKDOWN_SCORE+=1
+reg query "HKLM\SOFTWARE\Policies\Microsoft\Windows NT\SystemRestore" /v DisableSR >nul 2>&1 && set /a LOCKDOWN_SCORE+=1
+reg query "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" /v DisableAdvancedStartup >nul 2>&1 && set /a LOCKDOWN_SCORE+=1
+
+:: UserLock checks
+reg query "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" /v NoControlPanel >nul 2>&1 && set /a USERLOCK_SCORE+=1
+reg query "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\System" /v DisableTaskMgr >nul 2>&1 && set /a USERLOCK_SCORE+=1
+reg query "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" /v NoRun >nul 2>&1 && set /a USERLOCK_SCORE+=1
+reg query "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" /v NoDateTimeControlPanel >nul 2>&1 && set /a USERLOCK_SCORE+=1
+
+echo    LOCKDOWN Protection Score: %LOCKDOWN_SCORE%/5
+if %LOCKDOWN_SCORE% GEQ 4 (
+    echo    -> SYSTEME BIEN PROTEGE
+) else if %LOCKDOWN_SCORE% GEQ 2 (
+    echo    -> PROTECTION PARTIELLE
+) else (
+    echo    -> SYSTEME NON PROTEGE
+)
+echo.
+echo    USERLOCK Restriction Score: %USERLOCK_SCORE%/4
+if %USERLOCK_SCORE% GEQ 3 (
+    echo    -> UTILISATEUR BIEN RESTREINT
+) else if %USERLOCK_SCORE% GEQ 1 (
+    echo    -> UTILISATEUR PARTIELLEMENT RESTREINT
+) else (
+    echo    -> UTILISATEUR NON RESTREINT
+)
+echo.
+echo ============================================================
+echo    NOTE: Pour une securite complete, configurez un mot de
+echo          passe BIOS/UEFI manuellement sur la machine.
+echo ============================================================
+echo.
+pause
