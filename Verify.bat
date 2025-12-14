@@ -3,7 +3,7 @@ chcp 65001 >nul 2>&1
 setlocal EnableDelayedExpansion
 :: ============================================
 :: VERIFY.BAT - Complete System Status Verification
-:: Version 2.4 - Matches Lockdown/UserLock v2.4
+:: Version 2.5 - Matches Lockdown v2.2 / UserLock v2.5
 :: ============================================
 :: Check for Administrator privileges
 net session >nul 2>&1
@@ -255,14 +255,14 @@ echo.
 echo    Compte Administrator integre:
 net user Administrator 2>nul | findstr /i "active"
 
-:: Check if Administrator is hidden from login screen
+:: Check if Administrator is hidden from login screen (should be VISIBLE for UAC)
 set "ADMIN_HIDDEN=0"
 reg query "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon\SpecialAccounts\UserList" /v Administrator 2>nul | findstr "0x0" >nul
 if %errorLevel% equ 0 set "ADMIN_HIDDEN=1"
 if "!ADMIN_HIDDEN!"=="1" (
-    echo    * [OK] Administrator CACHE de l'ecran de connexion
+    echo    * [!] Administrator CACHE (problematique pour UAC^)
 ) else (
-    echo    * [!] Administrator VISIBLE sur l'ecran de connexion
+    echo    * [OK] Administrator VISIBLE (correct pour UAC^)
 )
 echo.
 

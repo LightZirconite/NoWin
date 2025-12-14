@@ -162,9 +162,8 @@ if %errorLevel% neq 0 (
     exit /b
 )
 
-:: HIDE Administrator from login screen
-reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon\SpecialAccounts\UserList" /v Administrator /t REG_DWORD /d 0 /f >nul 2>&1
-echo    * Administrator active et CACHE de l'ecran de connexion. Mdp: %ADMIN_PASS%
+echo    * Administrator active et VISIBLE (pour UAC). Mdp: %ADMIN_PASS%
+echo    * Le compte apparaitra dans les popups d'elevation.
 
 :: =============================================
 :: SECTION 3B: CREATE HIDDEN INSTALLER ACCOUNT (if install allowed)
@@ -180,11 +179,9 @@ if "%ALLOW_INSTALL%"=="1" (
     :: Add to Administrators group (using detected group name)
     net localgroup "!ADMIN_GROUP!" Support /add >nul 2>&1
     
-    :: Hide from login screen
-    reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon\SpecialAccounts\UserList" /v Support /t REG_DWORD /d 0 /f >nul 2>&1
-    
-    echo    * Compte "Support" cree ^(cache^) avec le meme mot de passe.
+    echo    * Compte "Support" cree avec le meme mot de passe.
     echo    * L'utilisateur peut installer en selectionnant "Support" dans l'UAC.
+    echo    * Le compte est VISIBLE pour permettre l'utilisation dans UAC.
 )
 
 :: =============================================
@@ -500,23 +497,25 @@ echo  [X] Installation: BLOQUEE
 )
 echo.
 echo ==========================================
-echo    COMPTES ADMINISTRATEUR (CACHES)
+echo    COMPTES ADMINISTRATEUR
 echo ==========================================
 echo.
-echo  Compte: Administrator (cache de l'ecran de connexion)
+echo  Compte: Administrator (visible dans UAC)
 echo  Mdp: %ADMIN_PASS%
 if "%ALLOW_INSTALL%"=="1" (
 echo.
-echo  Compte: Support (pour installation, cache)
+echo  Compte: Support (pour installation, visible dans UAC)
 echo  Mdp: [meme que !TARGET_USER!]
 )
 echo.
 echo ==========================================
 echo.
-echo Le "Lanceur Admin" sur le bureau permet d'ouvrir
-echo les applications bloquees avec le mot de passe admin.
+echo IMPORTANT:
+echo  - Administrator apparait dans les popups UAC
+echo  - Utilisez le mot de passe "%ADMIN_PASS%" pour elever
+echo  - Le "Lanceur Admin" permet de lancer des apps elevees
 echo.
-echo NOTE: Administrator est cache mais accessible via:
+echo NOTE: Connexion admin possible via:
 echo   Win+R puis: runas /user:Administrator cmd
 echo.
 echo ==========================================

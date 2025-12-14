@@ -3,7 +3,7 @@ chcp 65001 >nul 2>&1
 setlocal EnableDelayedExpansion
 :: ============================================
 :: USERUNLOCK.BAT - Complete User Privilege Restore
-:: Version 2.4 - Matches UserLock v2.4
+:: Version 2.5 - Matches UserLock v2.5
 :: ============================================
 :: Check for Administrator privileges
 net session >nul 2>&1
@@ -36,7 +36,7 @@ if %errorLevel% neq 0 (
 )
 
 echo ==========================================
-echo     USER PRIVILEGE RESTORE v2.4
+echo     USER PRIVILEGE RESTORE v2.5
 echo ==========================================
 echo.
 
@@ -334,12 +334,10 @@ if !errorLevel! equ 0 (
     echo    * Compte "Support" n'existait pas.
 )
 
-:: Remove Support from SpecialAccounts
+:: Remove SpecialAccounts entries (cleanup, no effect if not hidden)
 reg delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon\SpecialAccounts\UserList" /v Support /f >nul 2>&1
-
-:: IMPORTANT: Make Administrator VISIBLE again on login screen
 reg delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon\SpecialAccounts\UserList" /v Administrator /f >nul 2>&1
-echo    * Compte Administrator rendu VISIBLE sur l'ecran de connexion.
+echo    * Nettoyage des comptes caches (si presents).
 
 :: Safety Check: Do not disable if target is the Administrator account
 if /i "!TARGET_USER!"=="Administrator" goto :SKIP_DISABLE
