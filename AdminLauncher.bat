@@ -1,33 +1,77 @@
-﻿@echo off
+@echo off
 chcp 65001 >nul 2>&1
 setlocal EnableDelayedExpansion
 :: ============================================
 :: ADMINLAUNCHER.BAT - Self-Installing Admin Launcher
-:: Version 2.7 - ASCII-only (encoding fix)
+:: Version 2.8 - Auto-update from GitHub
 :: ============================================
 :: This script:
-:: 1. Auto-installs itself to Program Files\NoWin if not already there
-:: 2. Creates a protected desktop shortcut
-:: 3. Launches apps as Administrator via runas (password in terminal)
+:: 1. Auto-updates from GitHub if newer version available
+:: 2. Auto-installs itself to Program Files\NoWin if not already there
+:: 3. Creates a protected desktop shortcut
+:: 4. Launches apps as Administrator via runas (password in terminal)
 ::
 :: Usage:
 ::   AdminLauncher.bat              - Normal: install if needed, then menu
 ::   AdminLauncher.bat --install    - Install only, no menu (for UserLock)
+::   AdminLauncher.bat --no-update  - Skip update check
 
 title Lanceur Administrateur - NoWin
 
-:: Check for --install parameter (silent install, no menu)
+:: Check for parameters
 set "INSTALL_ONLY=0"
+set "SKIP_UPDATE=0"
 if /i "%~1"=="--install" set "INSTALL_ONLY=1"
 if /i "%~1"=="-i" set "INSTALL_ONLY=1"
+if /i "%~1"=="--no-update" set "SKIP_UPDATE=1"
+if /i "%~2"=="--no-update" set "SKIP_UPDATE=1"
 
 :: =============================================
-:: SECTION 0: SELF-INSTALLATION CHECK
+:: SECTION 0: AUTO-UPDATE CHECK
 :: =============================================
 set "INSTALL_DIR=C:\Program Files\NoWin"
 set "SHORTCUT_PATH=C:\Users\Public\Desktop\Lanceur Admin.lnk"
 set "CURRENT_PATH=%~f0"
 set "INSTALLED_PATH=%INSTALL_DIR%\AdminLauncher.bat"
+set "GITHUB_URL=https://raw.githubusercontent.com/LightZirconite/NoWin/main/AdminLauncher.bat"
+
+:: Skip update if --no-update or not installed yet
+if "%SKIP_UPDATE%"=="1" goto :SKIP_UPDATE_CHECK
+if not exist "%INSTALLED_PATH%" goto :SKIP_UPDATE_CHECK
+if /i not "%CURRENT_PATH%"=="%INSTALLED_PATH%" goto :SKIP_UPDATE_CHECK
+
+:: Check for updates from GitHub
+set "TEMP_UPDATE=%TEMP%\AdminLauncher_update.bat"
+set "VERSION_FILE=%TEMP%\AdminLauncher_version.txt"
+
+powershell -NoProfile -WindowStyle Hidden -Command "try { Invoke-WebRequest -UseBasicParsing -Uri '%GITHUB_URL%' -OutFile '%TEMP_UPDATE%' -TimeoutSec 3 -ErrorAction Stop; exit 0 } catch { exit 1 }" >nul 2>&1
+
+if %errorLevel% equ 0 (
+    if exist "%TEMP_UPDATE%" (
+        :: Compare files (size check - fast)
+        for %%A in ("%CURRENT_PATH%") do set "LOCAL_SIZE=%%~zA"
+        for %%B in ("%TEMP_UPDATE%") do set "REMOTE_SIZE=%%~zB"
+        
+        if not "!LOCAL_SIZE!"=="!REMOTE_SIZE!" (
+            :: Update available - replace and restart
+            echo Mise a jour detectee - Installation...
+            timeout /t 1 /nobreak >nul
+            copy /y "%TEMP_UPDATE%" "%INSTALLED_PATH%" >nul 2>&1
+            
+            :: Update shortcut icon if available
+            powershell -NoProfile -WindowStyle Hidden -Command "try { Invoke-WebRequest -UseBasicParsing -Uri 'https://raw.githubusercontent.com/LightZirconite/NoWin/main/logo.ico' -OutFile '%INSTALL_DIR%\logo.ico' -TimeoutSec 2 -ErrorAction Stop } catch {}" >nul 2>&1
+            
+            del /f /q "%TEMP_UPDATE%" >nul 2>&1
+            
+            :: Restart with --no-update to avoid loop
+            start "" "%INSTALLED_PATH%" --no-update
+            exit /b
+        )
+        del /f /q "%TEMP_UPDATE%" >nul 2>&1
+    )
+)
+
+:SKIP_UPDATE_CHECK
 
 :: If --install mode, always do installation
 if "%INSTALL_ONLY%"=="1" goto :DO_INSTALL
@@ -131,28 +175,28 @@ goto :MENU
 cls
 echo.
 echo ==========================================================
-echo |           LANCEUR ADMINISTRATEUR - NoWin                 |
+echo ^|           LANCEUR ADMINISTRATEUR - NoWin                 |
 echo ==========================================================
-echo |                                                          |
-echo |   [1]  Panneau de configuration                          |
-echo |   [2]  Gestionnaire des taches                           |
-echo |   [3]  Editeur de registre                               |
-echo |   [4]  Gestionnaire de peripheriques                     |
-echo |   [5]  Parametres Windows                                |
-echo |   [6]  Connexions reseau                                 |
-echo |   [7]  Gestion de l'ordinateur                           |
-echo |   [8]  Informations systeme                              |
-echo |   [9]  Services Windows                                  |
-echo |   [10] Invite de commandes (Admin)                       |
-echo |   [11] PowerShell (Admin)                                |
-echo |   [12] Explorateur de fichiers (Admin)                   |
-echo |                                                          |
-echo |   [C]  Application personnalisee                         |
-echo |   [U]  Lancer UserUnlock - restaurer droits              |
-echo |   [I]  Reinstaller ce lanceur                            |
-echo |                                                          |
-echo |   [0]  Quitter                                           |
-echo |                                                          |
+echo ^|                                                          |
+echo ^|   [1]  Panneau de configuration                          |
+echo ^|   [2]  Gestionnaire des taches                           |
+echo ^|   [3]  Editeur de registre                               |
+echo ^|   [4]  Gestionnaire de peripheriques                     |
+echo ^|   [5]  Parametres Windows                                |
+echo ^|   [6]  Connexions reseau                                 |
+echo ^|   [7]  Gestion de l'ordinateur                           |
+echo ^|   [8]  Informations systeme                              |
+echo ^|   [9]  Services Windows                                  |
+echo ^|   [10] Invite de commandes (Admin)                       |
+echo ^|   [11] PowerShell (Admin)                                |
+echo ^|   [12] Explorateur de fichiers (Admin)                   |
+echo ^|                                                          |
+echo ^|   [C]  Application personnalisee                         |
+echo ^|   [U]  Lancer UserUnlock - restaurer droits              |
+echo ^|   [I]  Reinstaller ce lanceur                            |
+echo ^|                                                          |
+echo ^|   [0]  Quitter                                           |
+echo ^|                                                          |
 echo ==========================================================
 echo.
 set /p "CHOICE=Choisissez une option: "
