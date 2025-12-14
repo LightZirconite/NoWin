@@ -77,9 +77,9 @@ bcdedit /timeout 30 >nul 2>&1
 bcdedit /set {default} bootmenupolicy Standard >nul 2>&1
 bcdedit /set {current} bootmenupolicy Standard >nul 2>&1
 
-:: 2.6 Re-enable advanced options
-bcdedit /set {globalsettings} advancedoptions true >nul 2>&1
-bcdedit /set {globalsettings} optionsedit true >nul 2>&1
+:: 2.6 REMOVE advanced options flags (DO NOT SET TO TRUE - causes boot editor to appear!)
+bcdedit /deletevalue {globalsettings} advancedoptions >nul 2>&1
+bcdedit /deletevalue {globalsettings} optionsedit >nul 2>&1
 
 :: 2.7 Re-enable bootlog
 bcdedit /deletevalue {current} bootlog >nul 2>&1
