@@ -88,17 +88,42 @@ goto :MENU
 :: =============================================
 :SHOW_SPLASH
 mode con: cols=150 lines=40 >nul 2>&1
-set "FRAMES=[= ] [== ] [===] [====]"
-for %%A in (%FRAMES%) do (
-    cls
-    echo.
-    echo =============================================================
-    echo                    NoWin Admin Launcher
-    echo =============================================================
-    echo.
-    echo    Preparing system access... %%~A
-    powershell -NoProfile -Command "Start-Sleep -Milliseconds 70" >nul 2>&1
-)
+
+cls
+echo.
+echo =============================================================
+echo                    NoWin Admin Launcher
+echo =============================================================
+echo.
+echo    Preparing system access... [■         ]
+powershell -NoProfile -Command "Start-Sleep -Milliseconds 100" >nul 2>&1
+
+cls
+echo.
+echo =============================================================
+echo                    NoWin Admin Launcher
+echo =============================================================
+echo.
+echo    Preparing system access... [■■■       ]
+powershell -NoProfile -Command "Start-Sleep -Milliseconds 100" >nul 2>&1
+
+cls
+echo.
+echo =============================================================
+echo                    NoWin Admin Launcher
+echo =============================================================
+echo.
+echo    Preparing system access... [■■■■■■    ]
+powershell -NoProfile -Command "Start-Sleep -Milliseconds 100" >nul 2>&1
+
+cls
+echo.
+echo =============================================================
+echo                    NoWin Admin Launcher
+echo =============================================================
+echo.
+echo    Preparing system access... [■■■■■■■■■ ]
+powershell -NoProfile -Command "Start-Sleep -Milliseconds 100" >nul 2>&1
 
 cls
 echo.
@@ -108,7 +133,7 @@ echo =============================================================
 echo                Acces rapides et scripts systeme
 echo =============================================================
 echo.
-powershell -NoProfile -Command "Start-Sleep -Milliseconds 350" >nul 2>&1
+powershell -NoProfile -Command "Start-Sleep -Milliseconds 400" >nul 2>&1
 exit /b
 
 :: =============================================
