@@ -21,130 +21,86 @@
 | Wake-on-LAN | Activé pour gestion à distance (MeshCentral) |
 | WiFi Protection | L'utilisateur peut changer de réseau mais pas se déconnecter |
 
-### Exécutables bloqués (IFEO)
-- `systemreset.exe` - Réinitialisation système
-- `rstrui.exe` - Restauration système
-- `recoverydrive.exe` - Création lecteur de récupération
-- `srtasks.exe` - Push Button Reset
-- `ReAgentc.exe` - Configuration WinRE
-- `msconfig.exe` - Configuration système
-- `dism.exe` - Deployment Image Servicing
-- `sfc.exe` - System File Checker
-- `netsh.exe` - Configuration réseau (pour WiFi lock)
-
 ---
 
 ## 🔓 Unlock.bat (v2.2)
 
-### Restaurations effectuées
-- WinRE (si `winre.wim` fourni à côté du script)
-- Configuration BCD par défaut
-- USB/CD réactivés
-- Tous les blocs IFEO supprimés
-- System Restore, Safe Mode, Advanced Startup
-- Sleep/Hibernation (30min AC, 15min batterie)
-- Contrôle WiFi complet
-
-### Restaurer WinRE manuellement
-Si `winre.wim` est absent, placez-en un à côté de `Unlock.bat`.
-
-**Source:** ISO Windows → `sources\install.wim` → extraire `Windows\System32\Recovery\winre.wim`
+Restaure tout ce que Lockdown a bloqué.
 
 ---
 
 ## ✅ Verify.bat (v2.2)
 
-### Sections vérifiées (14)
-1. État WinRE
-2. Configuration BCD
-3. USB/Boot externe
-4. Blocs IFEO (10+ exécutables)
-5. État System Restore
-6. Accès Safe Mode
-7. Options Advanced Startup
-8. Accès CMD Recovery
-9. Visibilité UI (pages Settings)
-10. Restrictions utilisateur
-11. Installation périphériques
-12. Power/Sleep/Wake-on-LAN
-13. **Protection WiFi**
-14. Résumé avec scores
+Vérifie 14 sections de sécurité et affiche un rapport complet.
 
 ---
 
-## 👤 UserLock.bat (v2.2)
+## 👤 UserLock.bat (v2.3)
 
-### Actions effectuées
-- Active le compte Administrator intégré (mdp: `uyy`)
-- Retire l'utilisateur courant du groupe Administrators
-- Configure UAC selon le choix (installation apps avec mdp admin ou non)
+### Fonctionnalités
 
-### Restrictions appliquées
-| Restriction | Clé registre |
-|-------------|--------------|
-| Panneau de configuration | `NoControlPanel` |
-| Gestionnaire des tâches | `DisableTaskMgr` |
-| Éditeur de registre | `DisableRegistryTools` |
-| Boîte Exécuter | `NoRun` |
-| Date/Heure | `NoDateTimeControlPanel` |
-| Mode développeur | `ApplicationManagement` |
-| Propriétés système | `NoPropertiesMyComputer` |
-| AutoPlay | `NoDriveTypeAutoRun` |
-| Windows Script Host | `Enabled=0` |
-| Bureau à distance | `fDenyTSConnections` |
+| Feature | Description |
+|---------|-------------|
+| Demotion | Retire l'utilisateur du groupe Administrators |
+| Compte Admin | Active "Administrator" avec mot de passe `uyy` |
+| Compte Support | (Optionnel) Crée un compte caché avec le mdp de l'utilisateur |
+| Lanceur Admin | Installe dans `C:\Program Files\NoWin\` + raccourci bureau |
+| Restrictions | Control Panel, Task Manager, Registry, Run, etc. |
 
-### Prompts interactifs
-1. **Confirmation O/N** avant de procéder
-2. **Option installation** - Permet d'installer des apps avec le mot de passe admin
+### Option Installation
+
+- **O (Bloquer)** : Pas de compte "Support" → seul l'admin avec "uyy" peut installer
+- **N (Autoriser)** : Crée le compte "Support" avec le mdp de l'utilisateur → l'utilisateur peut installer avec son propre mot de passe
+
+### Lanceur Admin
+
+Créé automatiquement sur le bureau public. Permet de lancer :
+- Panneau de configuration
+- Gestionnaire des tâches
+- Éditeur de registre
+- Gestionnaire de périphériques
+- Paramètres Windows
+- Connexions réseau
+- Gestion de l'ordinateur
+- Services Windows
+- CMD / PowerShell (Admin)
+- Et plus...
 
 ---
 
-## 👤 UserUnlock.bat (v2.2)
+## 👤 UserUnlock.bat (v2.3)
 
-### Actions effectuées
-- Promeut l'utilisateur au groupe Administrators
-- Supprime toutes les restrictions de UserLock
+- Restaure l'utilisateur en Administrateur
+- Supprime le compte "Support" si existant
+- Supprime le Lanceur Admin
 - Désactive le compte Administrator intégré
 
 ---
 
 ## 🔑 Credentials
 
-| Compte | Mot de passe |
-|--------|--------------|
-| Administrator intégré | `uyy` |
+| Compte | Mot de passe | Visible |
+|--------|--------------|---------|
+| Administrator | `uyy` | Non (écran login) |
+| Support | [même que l'utilisateur] | Non (caché) |
 
 ---
 
-## 🛡️ Sécurité BIOS/UEFI
+## 📁 Structure des fichiers
 
-**Ne peut PAS être configuré par script.** Actions manuelles requises :
-
-1. Entrer dans le setup BIOS/UEFI (F2, F12, DEL au démarrage)
-2. Définir un mot de passe Superviseur/Admin
-3. Désactiver le boot USB dans l'ordre de démarrage
-4. Activer Secure Boot
-
----
-
-## 📡 Gestion à distance (MeshCentral)
-
-Ces scripts sont optimisés pour MeshCentral :
-- **Wake-on-LAN activé** - Réveiller le PC à distance
-- **Sleep/Hibernation désactivé** - PC toujours disponible
-- **WiFi disconnect bloqué** - Utilisateur ne peut pas se déconnecter
-
----
-
-## 🔧 Dépannage
-
-| Problème | Solution |
-|----------|----------|
-| "Ransomware found" | L'exclusion Defender est incluse dans les commandes |
-| "Cannot open file" | Utiliser PowerShell, pas CMD |
-| Script ne s'élève pas | Lancer PowerShell en Admin d'abord |
-| WinRE ne se restaure pas | Placer un `winre.wim` valide à côté de Unlock.bat |
-| WiFi toujours accessible | Redémarrer Explorer ou le PC |
+```
+NoWin/
+├── Lockdown.bat       # Verrouillage système (v2.2)
+├── Unlock.bat         # Déverrouillage système (v2.2)
+├── Verify.bat         # Vérification (v2.2)
+├── UserLock.bat       # Restriction utilisateur (v2.3)
+├── UserUnlock.bat     # Restauration utilisateur (v2.3)
+├── AdminLauncher.bat  # Lanceur apps bloquées (v2.3)
+├── force-update-agent.bat  # MeshCentral
+├── logo.ico           # Icône du Lanceur
+├── README.md          # Documentation simple
+└── DOCS.md            # Cette documentation
+```
 
 ---
 
@@ -152,19 +108,7 @@ Ces scripts sont optimisés pour MeshCentral :
 
 | Version | Changements |
 |---------|-------------|
-| 2.2 | Protection WiFi, fix encodage UTF-8, support PowerShell, exclusion Defender intégrée |
-| 2.1 | Désactivation Sleep/Hibernation, Wake-on-LAN |
-| 2.0 | Réécriture complète, destruction WinRE améliorée |
-| 1.0 | Version initiale |
-
----
-
-## ⚖️ Avertissement légal
-
-Ces scripts sont destinés à l'**administration système légitime** :
-- Environnements d'entreprise gérés
-- Ordinateurs d'écoles/bibliothèques
-- Systèmes kiosque
-- Contrôle parental
-
-**NE PAS UTILISER** à des fins malveillantes.
+| 2.3 | Lanceur Admin, compte Support caché, fix UAC |
+| 2.2 | WiFi protection, UTF-8 encoding fix |
+| 2.1 | Sleep/Hibernation disable, Wake-on-LAN |
+| 2.0 | Réécriture complète |

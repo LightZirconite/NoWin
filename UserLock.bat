@@ -3,7 +3,7 @@ chcp 65001 >nul 2>&1
 setlocal EnableDelayedExpansion
 :: ============================================
 :: USERLOCK.BAT - Advanced User Privilege Lockdown
-:: Version 2.2 - Enhanced Restrictions
+:: Version 2.3 - Hidden Support Account
 :: ============================================
 :: Check for Administrator privileges
 net session >nul 2>&1
@@ -17,59 +17,57 @@ if %errorLevel% neq 0 (
 )
 
 echo ==========================================
-echo     USER PRIVILEGE LOCKDOWN v2.2
+echo     USER PRIVILEGE LOCKDOWN v2.3
 echo ==========================================
 echo.
 
 :: =============================================
-:: SECTION 0: CONFIRMATION
+:: SECTION 0: DETECT USER
 :: =============================================
 set "TARGET_USER=%USERNAME%"
 echo Utilisateur detecte: [%TARGET_USER%]
 echo.
-echo Ce script va:
-echo  - Activer le compte Administrator integre (mdp: uyy)
-echo  - Retrograder [%TARGET_USER%] en utilisateur standard
-echo  - Appliquer des restrictions systeme
-echo.
-echo ==========================================
-echo.
-set /p "CONFIRM=Voulez-vous continuer ? (O/N): "
-if /i "%CONFIRM%" neq "O" (
-    if /i "%CONFIRM%" neq "Y" (
-        echo Operation annulee.
-        pause
-        exit /b
-    )
-)
 
 :: =============================================
 :: SECTION 1: ASK ABOUT APP INSTALLATION
 :: =============================================
-echo.
 echo ==========================================
 echo    OPTION: INSTALLATION D'APPLICATIONS
 echo ==========================================
 echo.
-echo L'utilisateur [%TARGET_USER%] ne sera PAS administrateur.
+echo [O] OUI = BLOQUER l'installation (plus securise)
+echo     -> Toute demande d'elevation sera REFUSEE automatiquement
 echo.
-echo Si vous repondez OUI:
-echo  - L'utilisateur POURRA installer des applications
-echo  - Il devra entrer le mot de passe ADMIN (uyy) lors de l'UAC
-echo  - Il n'aura AUCUN droit admin en dehors de ca
-echo.
-echo Si vous repondez NON:
-echo  - L'utilisateur ne pourra PAS installer d'applications
-echo  - Toute demande d'elevation sera automatiquement refusee
+echo [N] NON = AUTORISER l'installation
+echo     -> Un compte admin cache sera cree avec le MEME mot de passe
+echo     -> L'utilisateur pourra installer sans connaitre le mdp admin
 echo.
 set "ALLOW_INSTALL=0"
-set /p "INSTALL_CHOICE=Autoriser l'installation d'apps (avec mdp admin) ? (O/N): "
-if /i "%INSTALL_CHOICE%"=="O" set "ALLOW_INSTALL=1"
-if /i "%INSTALL_CHOICE%"=="Y" set "ALLOW_INSTALL=1"
+set /p "INSTALL_CHOICE=Bloquer l'installation d'applications ? (O/N): "
+if /i "%INSTALL_CHOICE%"=="N" set "ALLOW_INSTALL=1"
 echo.
 
 :: =============================================
-:: SECTION 2: ENABLE BUILT-IN ADMINISTRATOR
+:: SECTION 2: GET USER PASSWORD (if install allowed)
+:: =============================================
+set "USER_PASS="
+if "%ALLOW_INSTALL%"=="1" (
+    echo ==========================================
+    echo    MOT DE PASSE UTILISATEUR
+    echo ==========================================
+    echo.
+    echo Pour permettre l'installation, entrez le mot de passe
+    echo actuel de [%TARGET_USER%].
+    echo.
+    echo Ce mot de passe sera utilise pour creer un compte admin cache.
+    echo L'utilisateur pourra installer des apps avec SON mot de passe.
+    echo.
+    set /p "USER_PASS=Mot de passe de %TARGET_USER%: "
+    echo.
+)
+
+:: =============================================
+:: SECTION 3: ENABLE BUILT-IN ADMINISTRATOR
 :: =============================================
 echo [1] Activation du compte Administrator...
 
@@ -82,36 +80,58 @@ if %errorLevel% neq 0 (
     pause
     exit /b
 )
-echo    * Administrator active. Mot de passe: %ADMIN_PASS%
+echo    * Administrator active (cache). Mot de passe: %ADMIN_PASS%
 
 :: =============================================
-:: SECTION 3: CONFIGURE UAC SETTINGS
+:: SECTION 3B: CREATE HIDDEN INSTALLER ACCOUNT (if install allowed)
+:: =============================================
+if "%ALLOW_INSTALL%"=="1" (
+    echo.
+    echo [1b] Creation du compte Installateur cache...
+    
+    :: Create a hidden admin account named "Support" with user's password
+    net user Support "%USER_PASS%" /add >nul 2>&1
+    net user Support /active:yes >nul 2>&1
+    
+    :: Add to Administrators group (English and French)
+    net localgroup Administrators Support /add >nul 2>&1
+    net localgroup Administrateurs Support /add >nul 2>&1
+    
+    :: Hide from login screen
+    reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon\SpecialAccounts\UserList" /v Support /t REG_DWORD /d 0 /f >nul 2>&1
+    
+    echo    * Compte "Support" cree ^(cache^) avec le meme mot de passe.
+    echo    * L'utilisateur peut installer en selectionnant "Support" dans l'UAC.
+)
+
+:: =============================================
+:: SECTION 4: CONFIGURE UAC SETTINGS
 :: =============================================
 echo.
 echo [2] Configuration UAC...
 
-:: Force UAC to list admins
+:: Force UAC to list admins (so admin accounts appear in UAC prompt)
 reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\CredUI" /v EnumerateAdministrators /t REG_DWORD /d 1 /f >nul 2>&1
 
 :: Require elevation for all admin operations (always prompt)
 reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" /v ConsentPromptBehaviorAdmin /t REG_DWORD /d 1 /f >nul 2>&1
 
-:: Behavior for standard users based on install choice
+:: ALWAYS allow admin credential prompt (so AdminLauncher works)
+:: The difference is: with Support account = user knows password, without = only admin knows "uyy"
+reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" /v ConsentPromptBehaviorUser /t REG_DWORD /d 1 /f >nul 2>&1
+
 if "%ALLOW_INSTALL%"=="1" (
-    :: Allow standard users to be prompted for admin credentials (they enter ADMIN password)
-    reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" /v ConsentPromptBehaviorUser /t REG_DWORD /d 1 /f >nul 2>&1
-    echo    * UAC: Boite de dialogue avec demande de mot de passe admin.
+    echo    * UAC: L'utilisateur verra "Support" et entrera SON mot de passe.
 ) else (
-    :: Automatically deny elevation for standard users (no prompt)
-    reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" /v ConsentPromptBehaviorUser /t REG_DWORD /d 0 /f >nul 2>&1
-    echo    * UAC: Elevation automatiquement refusee.
+    echo    * UAC: L'utilisateur devra connaitre le mdp "Administrator" (uyy).
+    echo    * Le Lanceur Admin permet de lancer les apps bloquees.
 )
 
 :: Enable UAC (ensure it's on)
 reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" /v EnableLUA /t REG_DWORD /d 1 /f >nul 2>&1
 
 :: =============================================
-:: SECTION 4: DEMOTE USER TO STANDARD
+:: SECTION 5: DEMOTE USER TO STANDARD
 :: =============================================
 echo.
 echo [3] Demoting user [%TARGET_USER%] to Standard User...
@@ -278,10 +298,49 @@ reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\ActiveDesktop" 
 echo    * Modification fond d'ecran bloquee.
 
 :: =============================================
-:: SECTION 11: RESTRICT BOOT OPTIONS
+:: SECTION 11: INSTALL ADMIN LAUNCHER
 :: =============================================
 echo.
-echo [10] Restriction options de demarrage...
+echo [10] Installation du Lanceur Admin...
+
+:: Create NoWin folder in Program Files (protected location)
+set "NOWIN_DIR=C:\Program Files\NoWin"
+if not exist "%NOWIN_DIR%" mkdir "%NOWIN_DIR%" >nul 2>&1
+
+:: Download AdminLauncher.bat
+powershell -NoProfile -Command "Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/LightZirconite/NoWin/main/AdminLauncher.bat' -OutFile '%NOWIN_DIR%\AdminLauncher.bat'" >nul 2>&1
+if exist "%NOWIN_DIR%\AdminLauncher.bat" (
+    echo    * AdminLauncher.bat installe dans Program Files.
+) else (
+    echo    * ERREUR: Impossible de telecharger AdminLauncher.bat
+)
+
+:: Download icon if available
+powershell -NoProfile -Command "Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/LightZirconite/NoWin/main/logo.ico' -OutFile '%NOWIN_DIR%\logo.ico'" >nul 2>&1
+
+:: Create desktop shortcut for all users
+set "SHORTCUT_PATH=C:\Users\Public\Desktop\Lanceur Admin.lnk"
+powershell -NoProfile -Command "$ws = New-Object -ComObject WScript.Shell; $s = $ws.CreateShortcut('%SHORTCUT_PATH%'); $s.TargetPath = '%NOWIN_DIR%\AdminLauncher.bat'; $s.WorkingDirectory = '%NOWIN_DIR%'; $s.Description = 'Lanceur Admin - NoWin'; if(Test-Path '%NOWIN_DIR%\logo.ico'){$s.IconLocation = '%NOWIN_DIR%\logo.ico'}; $s.Save()" >nul 2>&1
+
+:: Make shortcut read-only and system (harder to delete)
+attrib +r +s "%SHORTCUT_PATH%" >nul 2>&1
+
+if exist "%SHORTCUT_PATH%" (
+    echo    * Raccourci cree sur le bureau public.
+) else (
+    echo    * ATTENTION: Raccourci non cree.
+)
+
+:: Protect the NoWin folder (deny delete for Users)
+icacls "%NOWIN_DIR%" /deny "Users:(DE)" >nul 2>&1
+icacls "%NOWIN_DIR%" /deny "Utilisateurs:(DE)" >nul 2>&1
+echo    * Dossier NoWin protege contre la suppression.
+
+:: =============================================
+:: SECTION 12: RESTRICT BOOT OPTIONS
+:: =============================================
+echo.
+echo [11] Restriction options de demarrage...
 
 :: Block F8/boot menu access
 bcdedit /set {current} bootmenupolicy Standard >nul 2>&1
@@ -289,11 +348,11 @@ bcdedit /timeout 0 >nul 2>&1
 echo    * Menu boot restreint.
 
 :: =============================================
-:: SECTION 12: FINAL OUTPUT
+:: SECTION 13: FINAL OUTPUT
 :: =============================================
 echo.
 echo ==========================================
-echo     USER LOCKDOWN TERMINE (v2.2)
+echo     USER LOCKDOWN TERMINE (v2.3)
 echo ==========================================
 echo.
 echo Utilisateur [%TARGET_USER%] - Restrictions appliquees:
@@ -308,15 +367,30 @@ echo  [X] Date/heure bloquee
 echo  [X] Mode developpeur desactive
 echo  [X] AutoPlay/AutoRun desactive
 echo  [X] Windows Script Host desactive
+echo  [+] Lanceur Admin installe sur le bureau
 if "%ALLOW_INSTALL%"=="1" (
-echo  [ ] Installation: AUTORISEE (mot de passe admin requis^)
+echo  [ ] Installation: AUTORISEE via compte "Support"
 ) else (
 echo  [X] Installation: BLOQUEE
 )
 echo.
-echo Compte admin: Administrator
-echo Mot de passe: %ADMIN_PASS%
+echo ==========================================
+echo    COMPTES ADMINISTRATEUR
+echo ==========================================
 echo.
-echo Deconnexion dans 5 secondes...
-timeout /t 5
+echo  Compte: Administrator
+echo  Mdp: %ADMIN_PASS%
+if "%ALLOW_INSTALL%"=="1" (
+echo.
+echo  Compte: Support (pour installation)
+echo  Mdp: [meme que %TARGET_USER%]
+)
+echo.
+echo ==========================================
+echo.
+echo Le "Lanceur Admin" sur le bureau permet d'ouvrir
+echo les applications bloquees avec le mot de passe admin.
+echo.
+echo Deconnexion dans 10 secondes...
+timeout /t 10
 shutdown /l

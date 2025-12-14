@@ -3,7 +3,7 @@ chcp 65001 >nul 2>&1
 setlocal EnableDelayedExpansion
 :: ============================================
 :: USERUNLOCK.BAT - Complete User Privilege Restore
-:: Version 2.2 - Matches UserLock v2.2
+:: Version 2.3 - Matches UserLock v2.3
 :: ============================================
 :: Check for Administrator privileges
 net session >nul 2>&1
@@ -187,10 +187,21 @@ if "%PROMOTE_SUCCESS%"=="1" (
 )
 
 :: =============================================
-:: SECTION 8: DISABLE BUILT-IN ADMINISTRATOR
+:: SECTION 8: DISABLE BUILT-IN ADMINISTRATOR AND SUPPORT ACCOUNT
 :: =============================================
 echo.
-echo [7] Desactivation du compte Administrator integre...
+echo [7] Desactivation des comptes admin...
+
+:: Delete the hidden Support account if it exists
+net user Support /delete >nul 2>&1
+if %errorLevel% equ 0 (
+    echo    * Compte "Support" supprime.
+) else (
+    echo    * Compte "Support" n'existait pas.
+)
+
+:: Remove Support from SpecialAccounts
+reg delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon\SpecialAccounts\UserList" /v Support /f >nul 2>&1
 
 :: Safety Check: Do not disable if target is the Administrator account
 if /i "%TARGET_USER%"=="Administrator" goto :SKIP_DISABLE
@@ -246,11 +257,43 @@ reg add "HKLM\SYSTEM\CurrentControlSet\Control\Terminal Server" /v fDenyTSConnec
 echo    * Toutes les politiques nettoyees.
 
 :: =============================================
-:: SECTION 11: FINAL OUTPUT
+:: SECTION 11: REMOVE ADMIN LAUNCHER
+:: =============================================
+echo.
+echo [10] Suppression du Lanceur Admin...
+
+:: Remove desktop shortcut
+set "SHORTCUT_PATH=C:\Users\Public\Desktop\Lanceur Admin.lnk"
+attrib -r -s "%SHORTCUT_PATH%" >nul 2>&1
+del /f /q "%SHORTCUT_PATH%" >nul 2>&1
+if not exist "%SHORTCUT_PATH%" (
+    echo    * Raccourci supprime.
+) else (
+    echo    * ATTENTION: Raccourci non supprime.
+)
+
+:: Remove NoWin folder from Program Files
+set "NOWIN_DIR=C:\Program Files\NoWin"
+if exist "%NOWIN_DIR%" (
+    :: Remove protection first
+    icacls "%NOWIN_DIR%" /remove:d "Users" >nul 2>&1
+    icacls "%NOWIN_DIR%" /remove:d "Utilisateurs" >nul 2>&1
+    rd /s /q "%NOWIN_DIR%" >nul 2>&1
+    if not exist "%NOWIN_DIR%" (
+        echo    * Dossier NoWin supprime.
+    ) else (
+        echo    * ATTENTION: Dossier NoWin non supprime.
+    )
+) else (
+    echo    * Dossier NoWin n'existait pas.
+)
+
+:: =============================================
+:: SECTION 12: FINAL OUTPUT
 :: =============================================
 echo.
 echo ==========================================
-echo     USER UNLOCK TERMINE (v2.2)
+echo     USER UNLOCK TERMINE (v2.3)
 echo ==========================================
 echo.
 echo Utilisateur [%TARGET_USER%] entierement restaure:
@@ -265,6 +308,7 @@ echo  [+] Parametres reseau
 echo  [+] Date/heure
 echo  [+] Fond d'ecran / Ecran de veille
 echo  [+] Windows Script Host
+echo  [-] Lanceur Admin supprime
 echo  [+] Bureau a distance
 echo.
 echo Deconnexion dans 5 secondes...

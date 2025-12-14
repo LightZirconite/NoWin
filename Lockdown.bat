@@ -184,8 +184,8 @@ reg add "HKLM\SYSTEM\CurrentControlSet\Services\VSS" /v Start /t REG_DWORD /d 4 
 :: 5.3 Delete all shadow copies
 vssadmin delete shadows /all /quiet >nul 2>&1
 
-:: 5.4 Disable VSS writers
-wmic shadowcopy delete >nul 2>&1
+:: 5.4 Delete via PowerShell (more reliable)
+powershell -NoProfile -Command "Get-WmiObject Win32_ShadowCopy | ForEach-Object { $_.Delete() }" >nul 2>&1
 
 echo    * System Restore completely disabled.
 
@@ -238,14 +238,13 @@ echo    * Advanced startup options disabled.
 echo.
 echo [8] Blocking Recovery Command Prompt Access...
 
-:: 8.1 Disable Command Prompt for non-admins
-reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\System" /v DisableCMD /t REG_DWORD /d 2 /f >nul 2>&1
-
-:: 8.2 Block cmd.exe in WinRE context
+:: 8.1 Block cmd.exe in WinRE context only
 reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\recenv.exe" /v Debugger /t REG_SZ /d "cmd.exe /c exit" /f >nul 2>&1
 
-:: 8.3 Block Windows RE command shell
+:: 8.2 Block Windows RE command shell
 reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" /v DisableRecoveryConsole /t REG_DWORD /d 1 /f >nul 2>&1
+
+:: NOTE: DisableCMD removed - it blocks .bat scripts for standard users
 
 echo    * Recovery command prompt blocked.
 
