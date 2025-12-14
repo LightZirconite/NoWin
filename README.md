@@ -79,4 +79,23 @@ L'admin sélectionne une app → entre le mot de passe → l'app s'ouvre.
 
 ---
 
+## 🛠️ Commandes d'installation / désinstallation
+
+Si vous avez besoin d'installer ou de désinstaller manuellement `AdminLauncher`, utilisez les commandes PowerShell suivantes (exécutées en tant qu'administrateur).
+
+- Désinstaller `AdminLauncher` (élévation requise) :
+
+```powershell
+Start-Process -FilePath "$env:USERPROFILE\Downloads\NoWin\UninstallAdmin.bat" -Verb RunAs -Wait
+```
+
+- Installer `AdminLauncher` (exécute le mode `--install` avec élévation) :
+
+```powershell
+Start-Process -FilePath "$env:USERPROFILE\Downloads\NoWin\AdminLauncher.bat" -ArgumentList "--install" -Verb RunAs -Wait
+```
+
+Ces commandes supposent que les fichiers `AdminLauncher.bat` et `UninstallAdmin.bat` se trouvent dans le dossier `Downloads\NoWin` de l'utilisateur courant. Adaptez les chemins si nécessaire.
+
+
 **⚠️ Exécuter PowerShell en Administrateur** | **🔑 Mot de passe Admin:** `uyy`
