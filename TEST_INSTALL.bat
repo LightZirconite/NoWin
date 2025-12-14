@@ -14,7 +14,21 @@ set "SCRIPT_DIR=%~dp0"
 set "TEMP_LAUNCHER=%TEMP%\AdminLauncher_test.bat"
 
 echo [1/2] Copie du script dans TEMP...
-copy /y "%SCRIPT_DIR%AdminLauncher.bat" "%TEMP_LAUNCHER%" >nul 2>&1
+echo     Source: %SCRIPT_DIR%AdminLauncher.bat
+echo     Destination: %TEMP_LAUNCHER%
+
+if not exist "%SCRIPT_DIR%AdminLauncher.bat" (
+    echo     [ERREUR] Fichier source introuvable!
+    pause
+    exit /b 1
+)
+
+copy /y "%SCRIPT_DIR%AdminLauncher.bat" "%TEMP_LAUNCHER%"
+if %errorLevel% neq 0 (
+    echo     [ERREUR] Echec de la copie - Code erreur: %errorLevel%
+    pause
+    exit /b 1
+)
 
 if exist "%TEMP_LAUNCHER%" (
     echo [2/2] Execution en mode --install...
