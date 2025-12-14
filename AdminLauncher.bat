@@ -64,33 +64,82 @@ if /i not "%CURRENT_PATH%"=="%INSTALLED_PATH%" goto :SKIP_UPDATE_CHECK
 
 :: Check for updates from GitHub
 set "TEMP_UPDATE=%TEMP%\AdminLauncher_update.bat"
-set "VERSION_FILE=%TEMP%\AdminLauncher_version.txt"
 
-powershell -NoProfile -WindowStyle Hidden -Command "try { Invoke-WebRequest -UseBasicParsing -Uri '%GITHUB_URL%' -OutFile '%TEMP_UPDATE%' -TimeoutSec 3 -ErrorAction Stop; exit 0 } catch { exit 1 }" >nul 2>&1
+echo Verification des mises a jour...
+powershell -NoProfile -WindowStyle Hidden -Command "try { Invoke-WebRequest -UseBasicParsing -Uri '%GITHUB_URL%' -OutFile '%TEMP_UPDATE%' -TimeoutSec 5 -ErrorAction Stop; exit 0 } catch { exit 1 }" >nul 2>&1
 
 if %errorLevel% equ 0 (
     if exist "%TEMP_UPDATE%" (
-        :: Compare files (size check - fast)
-        for %%A in ("%CURRENT_PATH%") do set "LOCAL_SIZE=%%~zA"
-        for %%B in ("%TEMP_UPDATE%") do set "REMOTE_SIZE=%%~zB"
+        :: Compare files using hash (reliable method)
+        set "UPDATE_NEEDED=0"
         
-        if not "!LOCAL_SIZE!"=="!REMOTE_SIZE!" (
-            :: Update available - replace and restart
-            echo Mise a jour detectee - Installation...
-            timeout /t 1 /nobreak >nul
-            copy /y "%TEMP_UPDATE%" "%INSTALLED_PATH%" >nul 2>&1
+        for /f "tokens=*" %%H in ('powershell -NoProfile -Command "(Get-FileHash -Algorithm MD5 -Path '%CURRENT_PATH%').Hash"') do set "LOCAL_HASH=%%H"
+        for /f "tokens=*" %%H in ('powershell -NoProfile -Command "(Get-FileHash -Algorithm MD5 -Path '%TEMP_UPDATE%').Hash"') do set "REMOTE_HASH=%%H"
+        
+        if not "!LOCAL_HASH!"=="!REMOTE_HASH!" (
+            cls
+            echo.
+            echo ==========================================================
+            echo   MISE A JOUR DISPONIBLE
+            echo ==========================================================
+            echo.
+            echo   Une nouvelle version d'AdminLauncher est disponible.
+            echo   Installation en cours...
+            echo.
+            echo ==========================================================
+            echo.
             
-            :: Update shortcut icon if available
-            powershell -NoProfile -WindowStyle Hidden -Command "try { Invoke-WebRequest -UseBasicParsing -Uri 'https://raw.githubusercontent.com/LightZirconite/NoWin/main/logo.ico' -OutFile '%INSTALL_DIR%\logo.ico' -TimeoutSec 2 -ErrorAction Stop } catch {}" >nul 2>&1
-            
-            del /f /q "%TEMP_UPDATE%" >nul 2>&1
-            
-            :: Restart with --no-update to avoid loop
-            start "" "%INSTALLED_PATH%" --no-update
-            exit /b
+            :: Check admin rights for update
+            net session >nul 2>&1
+            if !errorLevel! neq 0 (
+                echo [!] Droits administrateur requis pour la mise a jour.
+                echo     Tentative d'elevation...
+                echo.
+                
+                :: Create temp update script that will replace the file
+                set "UPDATE_SCRIPT=%TEMP%\NoWin_Update.bat"
+                echo @echo off > "!UPDATE_SCRIPT!"
+                echo timeout /t 2 /nobreak ^>nul >> "!UPDATE_SCRIPT!"
+                echo copy /y "%TEMP_UPDATE%" "%INSTALLED_PATH%" ^>nul 2^>^&1 >> "!UPDATE_SCRIPT!"
+                echo if %%errorLevel%% equ 0 ( >> "!UPDATE_SCRIPT!"
+                echo     start "" "%INSTALLED_PATH%" --no-update >> "!UPDATE_SCRIPT!"
+                echo ^) >> "!UPDATE_SCRIPT!"
+                echo del /f /q "%TEMP_UPDATE%" ^>nul 2^>^&1 >> "!UPDATE_SCRIPT!"
+                echo del /f /q "%%~f0" ^>nul 2^>^&1 >> "!UPDATE_SCRIPT!"
+                
+                powershell -NoProfile -Command "Start-Process -FilePath '!UPDATE_SCRIPT!' -Verb RunAs" >nul 2>&1
+                exit /b
+            ) else (
+                :: Admin rights available - update directly
+                timeout /t 1 /nobreak >nul
+                copy /y "%TEMP_UPDATE%" "%INSTALLED_PATH%" >nul 2>&1
+                
+                if !errorLevel! equ 0 (
+                    echo [OK] Mise a jour installee avec succes.
+                    echo.
+                    
+                    :: Update icon if available
+                    powershell -NoProfile -WindowStyle Hidden -Command "try { Invoke-WebRequest -UseBasicParsing -Uri 'https://raw.githubusercontent.com/LightZirconite/NoWin/main/logo.ico' -OutFile '%INSTALL_DIR%\logo.ico' -TimeoutSec 2 -ErrorAction Stop } catch {}" >nul 2>&1
+                    
+                    del /f /q "%TEMP_UPDATE%" >nul 2>&1
+                    
+                    echo Redemarrage...
+                    timeout /t 2 /nobreak >nul
+                    start "" "%INSTALLED_PATH%" --no-update
+                    exit /b
+                ) else (
+                    echo [ERREUR] Impossible de mettre a jour le fichier.
+                    echo           Continuez avec la version actuelle.
+                    echo.
+                    pause
+                )
+            )
         )
         del /f /q "%TEMP_UPDATE%" >nul 2>&1
     )
+) else (
+    echo [!] Impossible de verifier les mises a jour (pas de connexion).
+    timeout /t 2 /nobreak >nul
 )
 
 :SKIP_UPDATE_CHECK
@@ -101,8 +150,15 @@ if "%INSTALL_ONLY%"=="1" goto :DO_INSTALL
 :: Check if we're running from the installed location
 if /i "%CURRENT_PATH%"=="%INSTALLED_PATH%" goto :MENU
 
-:: Not installed - check if installation exists
-if exist "%INSTALLED_PATH%" goto :MENU
+:: Not installed - offer to install
+if not exist "%INSTALLED_PATH%" goto :DO_INSTALL
+
+:: Installed but running from elsewhere - redirect to installed version
+echo.
+echo [!] Lancement depuis l'emplacement installe...
+timeout /t 1 /nobreak >nul
+start "" "%INSTALLED_PATH%"
+exit /b
 
 :: =============================================
 :: SELF-INSTALLATION
