@@ -46,18 +46,46 @@ echo.
 echo Detection de l'utilisateur standard...
 echo.
 
+:: Get list of admin users (works in all languages using SID S-1-5-32-544)
+set "ADMIN_USERS="
+for /f "skip=6 tokens=1" %%a in ('net localgroup *S-1-5-32-544 2^>nul') do (
+    if not "%%a"=="The" set "ADMIN_USERS=!ADMIN_USERS! %%a"
+)
+
+:: Fallback: try English and French group names
+if "!ADMIN_USERS!"=="" (
+    for /f "skip=6 tokens=1" %%a in ('net localgroup Administrators 2^>nul') do (
+        if not "%%a"=="The" set "ADMIN_USERS=!ADMIN_USERS! %%a"
+    )
+)
+if "!ADMIN_USERS!"=="" (
+    for /f "skip=6 tokens=1" %%a in ('net localgroup Administrateurs 2^>nul') do (
+        if not "%%a"=="The" set "ADMIN_USERS=!ADMIN_USERS! %%a"
+    )
+)
+
 :: Detect the first NON-Administrator standard user
 set "TARGET_USER="
-for /f "tokens=1" %%u in ('net user ^| findstr /v /i "Administrator Guest DefaultAccount WDAGUtilityAccount Support" ^| findstr /r "^[A-Za-z]"') do (
-    if not defined TARGET_USER (
-        for /f "tokens=*" %%g in ('net localgroup Administrateurs ^| findstr /v /i "%%u" 2^>nul') do (
-            set "TARGET_USER=%%u"
+for /f "skip=4 tokens=1" %%u in ('net user 2^>nul') do (
+    if not "%%u"=="The" if not "%%u"=="---" if not "%%u"=="" (
+        :: Skip system accounts
+        echo %%u | findstr /i "Administrator Guest DefaultAccount WDAGUtilityAccount Support" >nul 2>&1
+        if errorlevel 1 (
+            :: Check if this user is NOT in admins list
+            echo !ADMIN_USERS! | findstr /i "%%u" >nul 2>&1
+            if errorlevel 1 (
+                if not defined TARGET_USER set "TARGET_USER=%%u"
+            )
         )
     )
 )
 
-:: Fallback: if no standard user found, use current user
-if not defined TARGET_USER set "TARGET_USER=%USERNAME%"
+:: Fallback: if no standard user found, use current user (but not Administrator)
+if not defined TARGET_USER (
+    if /i not "%USERNAME%"=="Administrator" (
+        set "TARGET_USER=%USERNAME%"
+    )
+)
 
 echo Utilisateur STANDARD detecte: [%TARGET_USER%]
 echo.
@@ -74,13 +102,11 @@ if /i "%CONFIRM%"=="N" (
     echo Liste de TOUS les utilisateurs locaux:
     echo =====================================
     set "USER_COUNT=0"
-    for /f "skip=4 tokens=1" %%u in ('net user') do (
-        if not "%%u"=="---" (
-            if not "%%u"=="" (
-                set /a USER_COUNT+=1
-                echo   [!USER_COUNT!] %%u
-                set "USER_!USER_COUNT!=%%u"
-            )
+    for /f "skip=4 tokens=1" %%u in ('net user 2^>nul') do (
+        if not "%%u"=="The" if not "%%u"=="---" if not "%%u"=="" (
+            set /a USER_COUNT+=1
+            echo   [!USER_COUNT!] %%u
+            set "USER_!USER_COUNT!=%%u"
         )
     )
     echo.
