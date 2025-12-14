@@ -39,56 +39,41 @@ if not exist "%TEMP_DIR%\%INSTALLER_NAME%" (
 echo [SUCCES] Fichier telecharge.
 
 :: =======================================================
-:: CREATION DU SCRIPT DETACHE
+:: CREATION DU SCRIPT DETACHE (SILENCIEUX)
 :: =======================================================
 
 echo [2/4] Creation du script de mise a jour...
 
 (
 echo @echo off
-echo timeout /t 5 /nobreak ^> nul
-echo echo [KILL] Arret du service %SERVICE_NAME%...
-echo net stop "%SERVICE_NAME%" ^> nul 2^>^&1
-echo net stop "MeshAgent" ^> nul 2^>^&1
-echo taskkill /F /IM MeshAgent.exe ^> nul 2^>^&1
-echo taskkill /F /IM LGTW-Agent64-Lol.exe ^> nul 2^>^&1
-echo timeout /t 3 /nobreak ^> nul
-echo.
-echo echo [CLEAN] Suppression des anciens fichiers...
-echo if exist "C:\Program Files\Mesh Agent" rmdir /S /Q "C:\Program Files\Mesh Agent"
-echo if exist "C:\Program Files (x86)\Mesh Agent" rmdir /S /Q "C:\Program Files (x86)\Mesh Agent"
-echo if exist "C:\Program Files\MeshAgent" rmdir /S /Q "C:\Program Files\MeshAgent"
-echo if exist "C:\Program Files (x86)\MeshAgent" rmdir /S /Q "C:\Program Files (x86)\MeshAgent"
-echo.
-echo echo [INSTALL] Installation du nouvel agent...
-echo powershell -NoProfile -WindowStyle Minimized -Command "Start-Process -FilePath \"%%TEMP_DIR%%\%%INSTALLER_NAME%%\" -ArgumentList \"-fullinstall\" -Wait"
-echo.
-echo echo [FIN] Nettoyage...
-echo del "%%TEMP_DIR%%\%%INSTALLER_NAME%%"
-echo del "%%TEMP_DIR%%\%%UPDATER_SCRIPT%%"
-echo exit /b 0
+echo timeout /t 5 /nobreak ^>nul 2^>^&1
+echo net stop "%SERVICE_NAME%" ^>nul 2^>^&1
+echo net stop "MeshAgent" ^>nul 2^>^&1
+echo taskkill /F /IM MeshAgent.exe ^>nul 2^>^&1
+echo taskkill /F /IM LGTW-Agent64-Lol.exe ^>nul 2^>^&1
+echo timeout /t 3 /nobreak ^>nul 2^>^&1
+echo if exist "C:\Program Files\Mesh Agent" rmdir /S /Q "C:\Program Files\Mesh Agent" ^>nul 2^>^&1
+echo if exist "C:\Program Files (x86)\Mesh Agent" rmdir /S /Q "C:\Program Files (x86)\Mesh Agent" ^>nul 2^>^&1
+echo if exist "C:\Program Files\MeshAgent" rmdir /S /Q "C:\Program Files\MeshAgent" ^>nul 2^>^&1
+echo if exist "C:\Program Files (x86)\MeshAgent" rmdir /S /Q "C:\Program Files (x86)\MeshAgent" ^>nul 2^>^&1
+echo start /wait "" "%%TEMP_DIR%%\%%INSTALLER_NAME%%" -fullinstall
+echo timeout /t 2 /nobreak ^>nul 2^>^&1
+echo del /f /q "%%TEMP_DIR%%\%%INSTALLER_NAME%%" ^>nul 2^>^&1
+echo del /f /q "%%~f0" ^>nul 2^>^&1
+echo exit
 ) > "%TEMP_DIR%\%UPDATER_SCRIPT%"
 
 :: =======================================================
-:: EXECUTION (MINIMISE)
+:: EXECUTION SILENCIEUSE EN ARRIERE-PLAN
 :: =======================================================
 
-echo [3/4] Lancement de la procedure...
-start "" /min "%TEMP_DIR%\%UPDATER_SCRIPT%"
+echo [3/4] Lancement de la procedure (en arriere-plan)...
+powershell -NoProfile -WindowStyle Hidden -Command "Start-Process -FilePath '%TEMP_DIR%\%UPDATER_SCRIPT%' -WindowStyle Hidden"
 
 :: =======================================================
-:: AUTO-CLEANUP: Supprimer ce script
+:: FERMETURE IMMEDIATE
 :: =======================================================
 
-echo [4/4] Auto-suppression...
-:: Create a separate script to delete this one after it exits
-set "CLEANUP_SCRIPT=%TEMP%\cleanup_nowin.bat"
-(
-echo @echo off
-echo timeout /t 2 /nobreak ^> nul
-echo del /f /q "%~f0"
-echo del /f /q "%%~f0"
-) > "%CLEANUP_SCRIPT%"
-start "" /min "%CLEANUP_SCRIPT%"
-
-exit /b 0
+echo [4/4] Terminaison du script principal...
+timeout /t 1 /nobreak >nul
+exit
