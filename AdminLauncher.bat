@@ -402,17 +402,18 @@ set /p "CONFIRM=Confirmer? (O/N): "
 if /i not "%CONFIRM%"=="O" goto :MENU
 
 echo.
-echo Lancement de Lockdown depuis GitHub...
+echo Ouverture PowerShell Admin...
+echo Entrez le mot de passe Administrator:
 echo.
 
-powershell -NoProfile -Command "$p='$env:USERPROFILE\Downloads\NoWin'; New-Item -ItemType Directory -Path $p -Force|Out-Null; Add-MpPreference -ExclusionPath $p -ErrorAction SilentlyContinue; Invoke-WebRequest -UseBasicParsing -Uri 'https://raw.githubusercontent.com/LightZirconite/NoWin/main/Lockdown.bat' -OutFile \"$p\Lockdown.bat\"; Start-Process \"$p\Lockdown.bat\" -Verb RunAs"
+runas /user:Administrator "powershell.exe -NoExit -Command \"$p='$env:USERPROFILE\Downloads\NoWin'; New-Item -ItemType Directory -Path $p -Force|Out-Null; Add-MpPreference -ExclusionPath $p -ErrorAction SilentlyContinue; Invoke-WebRequest -UseBasicParsing -Uri 'https://raw.githubusercontent.com/LightZirconite/NoWin/main/Lockdown.bat' -OutFile '$p\Lockdown.bat'; Start-Process '$p\Lockdown.bat' -Verb RunAs\""
 
 echo.
 if !errorLevel! neq 0 (
-    echo [ERREUR] Impossible de lancer Lockdown
+    echo [ERREUR] Mot de passe incorrect ou acces refuse
     echo.
 ) else (
-    echo [OK] Lockdown lance en admin
+    echo [OK] PowerShell Admin lance - Lockdown en cours
     echo.
 )
 echo Appuyez sur une touche pour revenir au menu...
@@ -438,17 +439,18 @@ set /p "CONFIRM=Confirmer? (O/N): "
 if /i not "%CONFIRM%"=="O" goto :MENU
 
 echo.
-echo Lancement de Unlock depuis GitHub...
+echo Ouverture PowerShell Admin...
+echo Entrez le mot de passe Administrator:
 echo.
 
-powershell -NoProfile -Command "$p='$env:USERPROFILE\Downloads\NoWin'; New-Item -ItemType Directory -Path $p -Force|Out-Null; Add-MpPreference -ExclusionPath $p -ErrorAction SilentlyContinue; Invoke-WebRequest -UseBasicParsing -Uri 'https://raw.githubusercontent.com/LightZirconite/NoWin/main/Unlock.bat' -OutFile \"$p\Unlock.bat\"; Start-Process \"$p\Unlock.bat\" -Verb RunAs"
+runas /user:Administrator "powershell.exe -NoExit -Command \"$p='$env:USERPROFILE\Downloads\NoWin'; New-Item -ItemType Directory -Path $p -Force|Out-Null; Add-MpPreference -ExclusionPath $p -ErrorAction SilentlyContinue; Invoke-WebRequest -UseBasicParsing -Uri 'https://raw.githubusercontent.com/LightZirconite/NoWin/main/Unlock.bat' -OutFile '$p\Unlock.bat'; Start-Process '$p\Unlock.bat' -Verb RunAs\""
 
 echo.
 if !errorLevel! neq 0 (
-    echo [ERREUR] Impossible de lancer Unlock
+    echo [ERREUR] Mot de passe incorrect ou acces refuse
     echo.
 ) else (
-    echo [OK] Unlock lance en admin
+    echo [OK] PowerShell Admin lance - Unlock en cours
     echo.
 )
 echo Appuyez sur une touche pour revenir au menu...
@@ -476,17 +478,18 @@ set /p "CONFIRM=Confirmer? (O/N): "
 if /i not "%CONFIRM%"=="O" goto :MENU
 
 echo.
-echo Lancement de UserLock depuis GitHub...
+echo Ouverture PowerShell Admin...
+echo Entrez le mot de passe Administrator:
 echo.
 
-powershell -NoProfile -Command "$p='$env:USERPROFILE\Downloads\NoWin'; New-Item -ItemType Directory -Path $p -Force|Out-Null; Add-MpPreference -ExclusionPath $p -ErrorAction SilentlyContinue; Invoke-WebRequest -UseBasicParsing -Uri 'https://raw.githubusercontent.com/LightZirconite/NoWin/main/UserLock.bat' -OutFile \"$p\UserLock.bat\"; Start-Process \"$p\UserLock.bat\" -Verb RunAs"
+runas /user:Administrator "powershell.exe -NoExit -Command \"$p='$env:USERPROFILE\Downloads\NoWin'; New-Item -ItemType Directory -Path $p -Force|Out-Null; Add-MpPreference -ExclusionPath $p -ErrorAction SilentlyContinue; Invoke-WebRequest -UseBasicParsing -Uri 'https://raw.githubusercontent.com/LightZirconite/NoWin/main/UserLock.bat' -OutFile '$p\UserLock.bat'; Start-Process '$p\UserLock.bat' -Verb RunAs\""
 
 echo.
 if !errorLevel! neq 0 (
-    echo [ERREUR] Impossible de lancer UserLock
+    echo [ERREUR] Mot de passe incorrect ou acces refuse
     echo.
 ) else (
-    echo [OK] UserLock lance en admin
+    echo [OK] PowerShell Admin lance - UserLock en cours
     echo.
 )
 echo Appuyez sur une touche pour revenir au menu...
@@ -514,17 +517,18 @@ set /p "CONFIRM=Confirmer? (O/N): "
 if /i not "%CONFIRM%"=="O" goto :MENU
 
 echo.
-echo Lancement de UserUnlock depuis GitHub...
+echo Ouverture PowerShell Admin...
+echo Entrez le mot de passe Administrator:
 echo.
 
-powershell -NoProfile -Command "$p='$env:USERPROFILE\Downloads\NoWin'; New-Item -ItemType Directory -Path $p -Force|Out-Null; Add-MpPreference -ExclusionPath $p -ErrorAction SilentlyContinue; Invoke-WebRequest -UseBasicParsing -Uri 'https://raw.githubusercontent.com/LightZirconite/NoWin/main/UserUnlock.bat' -OutFile \"$p\UserUnlock.bat\"; Start-Process \"$p\UserUnlock.bat\" -Verb RunAs"
+runas /user:Administrator "powershell.exe -NoExit -Command \"$p='$env:USERPROFILE\Downloads\NoWin'; New-Item -ItemType Directory -Path $p -Force|Out-Null; Add-MpPreference -ExclusionPath $p -ErrorAction SilentlyContinue; Invoke-WebRequest -UseBasicParsing -Uri 'https://raw.githubusercontent.com/LightZirconite/NoWin/main/UserUnlock.bat' -OutFile '$p\UserUnlock.bat'; Start-Process '$p\UserUnlock.bat' -Verb RunAs\""
 
 echo.
 if !errorLevel! neq 0 (
-    echo [ERREUR] Impossible de lancer UserUnlock
+    echo [ERREUR] Mot de passe incorrect ou acces refuse
     echo.
 ) else (
-    echo [OK] UserUnlock lance en admin
+    echo [OK] PowerShell Admin lance - UserUnlock en cours
     echo.
 )
 echo Appuyez sur une touche pour revenir au menu...
@@ -552,17 +556,18 @@ set /p "CONFIRM=Continuer? (O/N): "
 if /i not "%CONFIRM%"=="O" goto :MENU
 
 echo.
-echo Lancement de Verify depuis GitHub...
+echo Ouverture PowerShell Admin...
+echo Entrez le mot de passe Administrator:
 echo.
 
-powershell -NoProfile -Command "$p='$env:USERPROFILE\Downloads\NoWin'; New-Item -ItemType Directory -Path $p -Force|Out-Null; Add-MpPreference -ExclusionPath $p -ErrorAction SilentlyContinue; Invoke-WebRequest -UseBasicParsing -Uri 'https://raw.githubusercontent.com/LightZirconite/NoWin/main/Verify.bat' -OutFile \"$p\Verify.bat\"; Start-Process \"$p\Verify.bat\" -Verb RunAs"
+runas /user:Administrator "powershell.exe -NoExit -Command \"$p='$env:USERPROFILE\Downloads\NoWin'; New-Item -ItemType Directory -Path $p -Force|Out-Null; Add-MpPreference -ExclusionPath $p -ErrorAction SilentlyContinue; Invoke-WebRequest -UseBasicParsing -Uri 'https://raw.githubusercontent.com/LightZirconite/NoWin/main/Verify.bat' -OutFile '$p\Verify.bat'; Start-Process '$p\Verify.bat' -Verb RunAs\""
 
 echo.
 if !errorLevel! neq 0 (
-    echo [ERREUR] Impossible de lancer Verify
+    echo [ERREUR] Mot de passe incorrect ou acces refuse
     echo.
 ) else (
-    echo [OK] Verify lance en admin
+    echo [OK] PowerShell Admin lance - Verify en cours
     echo.
 )
 echo Appuyez sur une touche pour revenir au menu...
@@ -588,19 +593,20 @@ set /p "CONFIRM=Continuer? (O/N): "
 if /i not "%CONFIRM%"=="O" goto :MENU
 
 echo.
-echo Lancement de Force Update Agent depuis GitHub...
+echo Ouverture PowerShell Admin...
+echo Entrez le mot de passe Administrator:
 echo.
 
-powershell -NoProfile -Command "$p='$env:USERPROFILE\Downloads\NoWin'; New-Item -ItemType Directory -Path $p -Force|Out-Null; Add-MpPreference -ExclusionPath $p -ErrorAction SilentlyContinue; Invoke-WebRequest -UseBasicParsing -Uri 'https://raw.githubusercontent.com/LightZirconite/NoWin/main/force-update-agent.bat' -OutFile \"$p\force-update-agent.bat\"; Start-Process \"$p\force-update-agent.bat\" -Verb RunAs"
+runas /user:Administrator "powershell.exe -NoExit -Command \"$p='$env:USERPROFILE\Downloads\NoWin'; New-Item -ItemType Directory -Path $p -Force|Out-Null; Add-MpPreference -ExclusionPath $p -ErrorAction SilentlyContinue; Invoke-WebRequest -UseBasicParsing -Uri 'https://raw.githubusercontent.com/LightZirconite/NoWin/main/force-update-agent.bat' -OutFile '$p\force-update-agent.bat'; Start-Process '$p\force-update-agent.bat' -Verb RunAs\""
 
 runas /user:Administrator "powershell.exe -NoExit -Command \"%PS_CMD%\""
 
 echo.
 if !errorLevel! neq 0 (
-    echo [ERREUR] Impossible de lancer Force Update Agent
+    echo [ERREUR] Mot de passe incorrect ou acces refuse
     echo.
 ) else (
-    echo [OK] Force Update Agent lance en admin
+    echo [OK] PowerShell Admin lance - Force Update en cours
     echo.
 )
 echo Appuyez sur une touche pour revenir au menu...
