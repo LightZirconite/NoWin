@@ -1,6 +1,11 @@
 @echo off
 setlocal EnableExtensions
 
+:: Check for --yes argument (bypass confirmations)
+set "AUTO_YES=0"
+if /i "%~1"=="--yes" set "AUTO_YES=1"
+if /i "%~1"=="-y" set "AUTO_YES=1"
+
 :: =======================================================
 :: AUTO-ELEVATION ADMIN AU DEMARRAGE
 :: =======================================================
@@ -32,7 +37,7 @@ powershell -NoProfile -WindowStyle Minimized -Command ^
 
 if not exist "%TEMP_DIR%\%INSTALLER_NAME%" (
     echo [ERREUR CRITIQUE] Telechargement echoue.
-    pause
+    if "%AUTO_YES%"=="1" (timeout /t 2 /nobreak >nul) else (pause)
     exit /b 1
 )
 

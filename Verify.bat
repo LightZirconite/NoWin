@@ -5,6 +5,12 @@ setlocal EnableDelayedExpansion
 :: VERIFY.BAT - Complete System Status Verification
 :: Version 2.5 - Matches Lockdown v2.2 / UserLock v2.5
 :: ============================================
+
+:: Check for --yes argument (bypass confirmations)
+set "AUTO_YES=0"
+if /i "%~1"=="--yes" set "AUTO_YES=1"
+if /i "%~1"=="-y" set "AUTO_YES=1"
+
 :: Check for Administrator privileges
 net session >nul 2>&1
 if %errorLevel% neq 0 (
@@ -30,7 +36,7 @@ if %errorLevel% neq 0 (
         echo  2. Choisir "Executer en tant qu'administrateur"
         echo  3. Accepter le popup UAC
         echo.
-        pause
+        if "%AUTO_YES%"=="1" (timeout /t 2 /nobreak >nul) else (pause)
     )
     exit /b
 )
@@ -457,4 +463,4 @@ echo    NOTE: Pour une securite complete, configurez un mot de
 echo          passe BIOS/UEFI manuellement sur la machine.
 echo ============================================================
 echo.
-pause
+if "%AUTO_YES%"=="1" (echo [AUTO] Verification terminee.) else (pause)

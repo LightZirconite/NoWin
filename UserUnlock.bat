@@ -5,6 +5,12 @@ setlocal EnableDelayedExpansion
 :: USERUNLOCK.BAT - Complete User Privilege Restore
 :: Version 2.5 - Matches UserLock v2.5
 :: ============================================
+
+:: Check for --yes argument (bypass confirmations)
+set "AUTO_YES=0"
+if /i "%~1"=="--yes" set "AUTO_YES=1"
+if /i "%~1"=="-y" set "AUTO_YES=1"
+
 :: Check for Administrator privileges
 net session >nul 2>&1
 if %errorLevel% neq 0 (
@@ -30,7 +36,7 @@ if %errorLevel% neq 0 (
         echo  2. Choisir "Executer en tant qu'administrateur"
         echo  3. Accepter le popup UAC
         echo.
-        pause
+        if "%AUTO_YES%"=="1" (timeout /t 2 /nobreak >nul) else (pause)
     )
     exit /b
 )
@@ -59,7 +65,7 @@ for /f "tokens=*" %%g in ('powershell -NoProfile -Command "(New-Object System.Se
 
 if "!ADMIN_GROUP!"=="" (
     echo [ERREUR] Impossible de detecter le groupe Administrateurs.
-    pause
+    if "%AUTO_YES%"=="1" (timeout /t 2 /nobreak >nul) else (pause)
     exit /b
 )
 echo    * Groupe admin: [!ADMIN_GROUP!]
@@ -99,7 +105,7 @@ if not defined TARGET_USER (
 if not defined TARGET_USER (
     echo [ERREUR] Aucun utilisateur a restaurer trouve.
     echo Tous les utilisateurs semblent deja etre administrateurs.
-    pause
+    if "%AUTO_YES%"=="1" (timeout /t 2 /nobreak >nul) else (pause)
     exit /b
 )
 
@@ -117,6 +123,11 @@ echo  1. Supprimer TOUTES les restrictions de [!TARGET_USER!]
 echo  2. Restaurer les droits Administrateur a [!TARGET_USER!]
 echo  3. DESACTIVER et RENDRE VISIBLE le compte 'Administrator'
 echo.
+
+if "%AUTO_YES%"=="1" (
+    echo [AUTO] Restauration de [!TARGET_USER!]...
+    goto :CONTINUE_RESTORE
+)
 
 :ASK_CONFIRM
 set /p "CONFIRM=[!TARGET_USER!] est le bon utilisateur a restaurer ? (O/N): "
@@ -151,6 +162,7 @@ if /i "%CONFIRM%" neq "O" (
 )
 
 :PROCEED
+:CONTINUE_RESTORE
 
 :: =============================================
 :: SECTION 2: RESTORE SYSTEM ACCESS FOR TARGET USER

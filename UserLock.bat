@@ -5,6 +5,12 @@ setlocal EnableDelayedExpansion
 :: USERLOCK.BAT - Advanced User Privilege Lockdown
 :: Version 2.5 - Enhanced Error Handling & Safety Checks
 :: ============================================
+
+:: Check for --yes argument (bypass confirmations)
+set "AUTO_YES=0"
+if /i "%~1"=="--yes" set "AUTO_YES=1"
+if /i "%~1"=="-y" set "AUTO_YES=1"
+
 :: Check for Administrator privileges
 net session >nul 2>&1
 if %errorLevel% neq 0 (
@@ -30,7 +36,7 @@ if %errorLevel% neq 0 (
         echo  2. Choisir "Executer en tant qu'administrateur"
         echo  3. Accepter le popup UAC
         echo.
-        pause
+        if "%AUTO_YES%"=="1" (timeout /t 2 /nobreak >nul) else (pause)
     )
     exit /b
 )
@@ -59,7 +65,7 @@ for /f "tokens=*" %%g in ('powershell -NoProfile -Command "(New-Object System.Se
 
 if "!ADMIN_GROUP!"=="" (
     echo [ERREUR] Impossible de detecter le groupe Administrateurs.
-    pause
+    if "%AUTO_YES%"=="1" (timeout /t 2 /nobreak >nul) else (pause)
     exit /b
 )
 echo    * Groupe admin: [!ADMIN_GROUP!]
@@ -90,7 +96,7 @@ if not defined TARGET_USER (
 
 if not defined TARGET_USER (
     echo [ERREUR] Aucun utilisateur cible trouve.
-    pause
+    if "%AUTO_YES%"=="1" (timeout /t 2 /nobreak >nul) else (pause)
     exit /b
 )
 
@@ -119,8 +125,12 @@ echo     -> Un compte admin cache sera cree avec le MEME mot de passe
 echo     -> L'utilisateur pourra installer sans connaitre le mdp admin
 echo.
 set "ALLOW_INSTALL=0"
-set /p "INSTALL_CHOICE=Bloquer l'installation d'applications ? (O/N): "
-if /i "%INSTALL_CHOICE%"=="N" set "ALLOW_INSTALL=1"
+if "%AUTO_YES%"=="1" (
+    echo [AUTO] Blocage installation: OUI
+) else (
+    set /p "INSTALL_CHOICE=Bloquer l'installation d'applications ? (O/N): "
+    if /i "!INSTALL_CHOICE!"=="N" set "ALLOW_INSTALL=1"
+)
 echo.
 
 :: =============================================
@@ -134,7 +144,12 @@ if "%ALLOW_INSTALL%"=="1" (
     echo.
     echo Pour permettre l'installation, entrez le mot de passe
     echo actuel de [%TARGET_USER%].
-    echo.
+    if "%AUTO_YES%"=="1" (
+        echo [AUTO] Mode silencieux: mot de passe non requis en mode --yes
+        set "ALLOW_INSTALL=0"
+    ) else (
+        set /p "USER_PASS=Mot de passe de %TARGET_USER%: "
+    )
     echo Ce mot de passe sera utilise pour creer un compte admin cache.
     echo L'utilisateur pourra installer des apps avec SON mot de passe.
     echo.
@@ -153,7 +168,7 @@ set "ADMIN_PASS=uyy"
 net user Administrator "%ADMIN_PASS%" /active:yes >nul 2>&1
 if %errorLevel% neq 0 (
     echo    * ECHEC activation du compte Administrator. Abandon.
-    pause
+    if "%AUTO_YES%"=="1" (timeout /t 2 /nobreak >nul) else (pause)
     exit /b
 )
 
@@ -162,7 +177,7 @@ net user Administrator | findstr /i "active" | findstr /i "Yes" >nul 2>&1
 if %errorLevel% neq 0 (
     echo    * ERREUR CRITIQUE: Administrator n'est pas actif.
     echo    * Impossible de continuer sans compte admin de secours.
-    pause
+    if "%AUTO_YES%"=="1" (timeout /t 2 /nobreak >nul) else (pause)
     exit /b
 )
 
@@ -246,7 +261,7 @@ if "!IS_ADMIN!"=="0" (
     echo    * Le script va s'arreter pour eviter un etat incoherent.
     echo    * Verifiez que le compte Administrator est actif:
     echo      net user Administrator
-    pause
+    if "%AUTO_YES%"=="1" (timeout /t 2 /nobreak >nul) else (pause)
     exit /b
 )
 
@@ -279,14 +294,14 @@ if errorlevel 1 (
             echo      - Le fichier NTUSER.DAT est corrompu
             echo      - Droits insuffisants
             echo.
-            pause
+            if "%AUTO_YES%"=="1" (timeout /t 2 /nobreak >nul) else (pause)
             exit /b
         )
     ) else (
         echo    * ERREUR: NTUSER.DAT introuvable a !NTUSER_PATH!
         echo    * Impossible d'appliquer les restrictions utilisateur.
         echo.
-        pause
+        if "%AUTO_YES%"=="1" (timeout /t 2 /nobreak >nul) else (pause)
         exit /b
     )
 ) else (
@@ -529,8 +544,13 @@ echo.
 echo Les changements de groupe necessitent une deconnexion
 echo pour prendre effet completement.
 echo.
-echo Appuyez sur une touche pour vous deconnecter...
-pause >nul
+if "%AUTO_YES%"=="1" (
+    echo [AUTO] Deconnexion dans 3 secondes...
+    timeout /t 3 /nobreak >nul
+) else (
+    echo Appuyez sur une touche pour vous deconnecter...
+    pause >nul
+)
 
 :: Final verification before logout
 echo.
@@ -543,7 +563,7 @@ if %errorLevel% neq 0 (
     echo.
     echo ANNULATION de la deconnexion.
     echo Utilisez UserUnlock.bat pour restaurer les droits.
-    pause
+    if "%AUTO_YES%"=="1" (timeout /t 2 /nobreak >nul) else (pause)
     exit /b
 )
 
