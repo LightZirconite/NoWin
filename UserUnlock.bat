@@ -36,67 +36,92 @@ if %errorLevel% neq 0 (
 )
 
 echo ==========================================
-echo     USER PRIVILEGE RESTORE v2.2
+echo     USER PRIVILEGE RESTORE v2.4
 echo ==========================================
+echo.
+
+:: =============================================
+:: SECTION 0: DETECT GROUP NAMES (Language-Independent)
+:: =============================================
+echo Detection des groupes systeme...
+
+:: Get the actual name of the Administrators group using SID (works in ALL languages)
+set "ADMIN_GROUP="
+for /f "tokens=*" %%g in ('powershell -NoProfile -Command "(New-Object System.Security.Principal.SecurityIdentifier('S-1-5-32-544')).Translate([System.Security.Principal.NTAccount]).Value.Split('\')[-1]"') do (
+    set "ADMIN_GROUP=%%g"
+)
+
+:: Get the actual name of the Users group using SID
+set "USERS_GROUP="
+for /f "tokens=*" %%g in ('powershell -NoProfile -Command "(New-Object System.Security.Principal.SecurityIdentifier('S-1-5-32-545')).Translate([System.Security.Principal.NTAccount]).Value.Split('\')[-1]"') do (
+    set "USERS_GROUP=%%g"
+)
+
+if "!ADMIN_GROUP!"=="" (
+    echo [ERREUR] Impossible de detecter le groupe Administrateurs.
+    pause
+    exit /b
+)
+echo    * Groupe admin: [!ADMIN_GROUP!]
+echo    * Groupe users: [!USERS_GROUP!]
 echo.
 
 :: =============================================
 :: SECTION 1: IDENTIFY TARGET USER
 :: =============================================
-echo Detection de l'utilisateur standard...
+echo Detection de l'utilisateur a restaurer...
 echo.
 
-:: Get list of admin users (works in all languages using SID S-1-5-32-544)
+:: Get list of admin users using detected group name
 set "ADMIN_USERS="
-for /f "skip=6 tokens=1" %%a in ('net localgroup *S-1-5-32-544 2^>nul') do (
-    if not "%%a"=="The" set "ADMIN_USERS=!ADMIN_USERS! %%a"
+for /f "skip=6 tokens=1" %%a in ('net localgroup "!ADMIN_GROUP!" 2^>nul') do (
+    if not "%%a"=="The" if not "%%a"=="La" set "ADMIN_USERS=!ADMIN_USERS! %%a"
 )
 
-:: Fallback: try English and French group names
-if "!ADMIN_USERS!"=="" (
-    for /f "skip=6 tokens=1" %%a in ('net localgroup Administrators 2^>nul') do (
-        if not "%%a"=="The" set "ADMIN_USERS=!ADMIN_USERS! %%a"
-    )
-)
-if "!ADMIN_USERS!"=="" (
-    for /f "skip=6 tokens=1" %%a in ('net localgroup Administrateurs 2^>nul') do (
-        if not "%%a"=="The" set "ADMIN_USERS=!ADMIN_USERS! %%a"
-    )
-)
-
-:: Detect the first NON-Administrator standard user
+:: Detect the first NON-Administrator standard user using PowerShell (more reliable)
 set "TARGET_USER="
-for /f "skip=4 tokens=1" %%u in ('net user 2^>nul') do (
-    if not "%%u"=="The" if not "%%u"=="---" if not "%%u"=="" (
-        :: Skip system accounts
-        echo %%u | findstr /i "Administrator Guest DefaultAccount WDAGUtilityAccount Support" >nul 2>&1
-        if errorlevel 1 (
-            :: Check if this user is NOT in admins list
-            echo !ADMIN_USERS! | findstr /i "%%u" >nul 2>&1
-            if errorlevel 1 (
-                if not defined TARGET_USER set "TARGET_USER=%%u"
-            )
-        )
+for /f "tokens=*" %%u in ('powershell -NoProfile -Command "$admins = (net localgroup '!ADMIN_GROUP!' 2^>$null) -split "`n" ^| Where-Object {$_ -match '^\w'}; $users = Get-WmiObject Win32_UserAccount -Filter 'LocalAccount=True AND Disabled=False' ^| Where-Object {$_.Name -notmatch 'Administrator^|Guest^|DefaultAccount^|WDAGUtilityAccount^|Support' -and $admins -notcontains $_.Name}; if($users){($users ^| Select-Object -First 1).Name}"') do (
+    if not "%%u"=="" set "TARGET_USER=%%u"
+)
+
+:: Fallback: if no standard user found, check explorer.exe owner
+if not defined TARGET_USER (
+    for /f "tokens=*" %%u in ('powershell -NoProfile -Command "$p = Get-Process explorer -ErrorAction SilentlyContinue ^| Select-Object -First 1; if($p){(Get-WmiObject Win32_Process -Filter \"ProcessId=$($p.Id)\").GetOwner().User}"') do (
+        if not "%%u"=="" if /i not "%%u"=="Administrator" set "TARGET_USER=%%u"
     )
 )
 
-:: Fallback: if no standard user found, use current user (but not Administrator)
+:: Final fallback: use current user if not Administrator
 if not defined TARGET_USER (
     if /i not "%USERNAME%"=="Administrator" (
         set "TARGET_USER=%USERNAME%"
     )
 )
 
-echo Utilisateur STANDARD detecte: [%TARGET_USER%]
+if not defined TARGET_USER (
+    echo [ERREUR] Aucun utilisateur a restaurer trouve.
+    echo Tous les utilisateurs semblent deja etre administrateurs.
+    pause
+    exit /b
+)
+
+:: Get the SID of target user for registry operations
+set "TARGET_SID="
+for /f "tokens=*" %%s in ('powershell -NoProfile -Command "$u = Get-WmiObject Win32_UserAccount -Filter \"Name='!TARGET_USER!' AND LocalAccount=True\"; if($u){$u.SID}"') do (
+    set "TARGET_SID=%%s"
+)
+
+echo Utilisateur STANDARD detecte: [!TARGET_USER!]
+if defined TARGET_SID echo    * SID: !TARGET_SID!
 echo.
 echo Ce script va:
-echo  1. Supprimer TOUTES les restrictions de [%TARGET_USER%]
-echo  2. Restaurer les droits Administrateur a [%TARGET_USER%]
-echo  3. DESACTIVER le compte 'Administrator' integre
+echo  1. Supprimer TOUTES les restrictions de [!TARGET_USER!]
+echo  2. Restaurer les droits Administrateur a [!TARGET_USER!]
+echo  3. DESACTIVER et RENDRE VISIBLE le compte 'Administrator'
 echo.
 
 :ASK_CONFIRM
-set /p "CONFIRM=[%TARGET_USER%] est le bon utilisateur a restaurer ? (O/N): "
+set /p "CONFIRM=[!TARGET_USER!] est le bon utilisateur a restaurer ? (O/N): "
 if /i "%CONFIRM%"=="N" (
     echo.
     echo Liste de TOUS les utilisateurs locaux:
@@ -130,37 +155,71 @@ if /i "%CONFIRM%" neq "O" (
 :PROCEED
 
 :: =============================================
-:: SECTION 2: RESTORE SYSTEM ACCESS
+:: SECTION 2: RESTORE SYSTEM ACCESS FOR TARGET USER
 :: =============================================
 echo.
-echo [1] Suppression des restrictions systeme...
+echo [1] Suppression des restrictions systeme pour [!TARGET_USER!]...
+
+:: Check if target user's registry is already loaded in HKU
+set "REG_ROOT=HKU\!TARGET_SID!"
+set "USER_REG_LOADED=0"
+
+if defined TARGET_SID (
+    reg query "!REG_ROOT!" >nul 2>&1
+    if errorlevel 1 (
+        :: User not logged in, need to load NTUSER.DAT
+        set "NTUSER_PATH="
+        for /f "tokens=*" %%p in ('powershell -NoProfile -Command "$prof = Get-WmiObject Win32_UserProfile ^| Where-Object {$_.SID -eq '!TARGET_SID!'}; if($prof){$prof.LocalPath}"') do (
+            set "NTUSER_PATH=%%p\NTUSER.DAT"
+        )
+        if exist "!NTUSER_PATH!" (
+            reg load "HKU\!TARGET_SID!" "!NTUSER_PATH!" >nul 2>&1
+            if not errorlevel 1 (
+                set "USER_REG_LOADED=1"
+                echo    * Registre utilisateur charge depuis !NTUSER_PATH!
+            ) else (
+                echo    * ATTENTION: Impossible de charger le registre.
+                set "REG_ROOT=HKCU"
+            )
+        ) else (
+            echo    * ATTENTION: NTUSER.DAT introuvable.
+            set "REG_ROOT=HKCU"
+        )
+    ) else (
+        echo    * Utilisateur connecte, acces direct a HKU\!TARGET_SID!
+    )
+) else (
+    set "REG_ROOT=HKCU"
+)
+
+echo    * Cible registre: !REG_ROOT!
 
 :: 2.1 Remove Control Panel block
-reg delete "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" /v NoControlPanel /f >nul 2>&1
+reg delete "!REG_ROOT!\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" /v NoControlPanel /f >nul 2>&1
 echo    * Panneau de configuration debloque.
 
 :: 2.2 Remove Registry Editor block
-reg delete "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\System" /v DisableRegistryTools /f >nul 2>&1
+reg delete "!REG_ROOT!\Software\Microsoft\Windows\CurrentVersion\Policies\System" /v DisableRegistryTools /f >nul 2>&1
 echo    * Editeur de registre debloque.
 
 :: 2.3 Remove Task Manager block
-reg delete "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\System" /v DisableTaskMgr /f >nul 2>&1
+reg delete "!REG_ROOT!\Software\Microsoft\Windows\CurrentVersion\Policies\System" /v DisableTaskMgr /f >nul 2>&1
 echo    * Gestionnaire de taches debloque.
 
 :: 2.4 Remove Run dialog block
-reg delete "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" /v NoRun /f >nul 2>&1
+reg delete "!REG_ROOT!\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" /v NoRun /f >nul 2>&1
 echo    * Boite Executer debloquee.
 
 :: 2.5 Remove drive hiding
-reg delete "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" /v NoDrives /f >nul 2>&1
+reg delete "!REG_ROOT!\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" /v NoDrives /f >nul 2>&1
 echo    * Lecteurs visibles.
 
 :: 2.6 Remove Settings app restrictions
-reg delete "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" /v SettingsPageVisibility /f >nul 2>&1
+reg delete "!REG_ROOT!\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" /v SettingsPageVisibility /f >nul 2>&1
 echo    * Application Settings debloquee.
 
 :: 2.7 Remove date/time block
-reg delete "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" /v NoDateTimeControlPanel /f >nul 2>&1
+reg delete "!REG_ROOT!\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" /v NoDateTimeControlPanel /f >nul 2>&1
 echo    * Date/heure debloquee.
 
 :: 2.8 Re-enable Developer Mode access
@@ -169,24 +228,24 @@ reg delete "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\AppModelUnlock" /v Al
 echo    * Mode developpeur accessible.
 
 :: 2.9 Remove system properties block
-reg delete "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" /v NoPropertiesMyComputer /f >nul 2>&1
+reg delete "!REG_ROOT!\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" /v NoPropertiesMyComputer /f >nul 2>&1
 echo    * Proprietes systeme debloquees.
 
 :: 2.10 Re-enable AutoPlay/AutoRun
-reg delete "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" /v NoDriveTypeAutoRun /f >nul 2>&1
+reg delete "!REG_ROOT!\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" /v NoDriveTypeAutoRun /f >nul 2>&1
 reg delete "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer" /v NoDriveTypeAutoRun /f >nul 2>&1
 echo    * AutoPlay/AutoRun reactive.
 
 :: 2.11 Re-enable Windows Script Host
-reg delete "HKCU\Software\Microsoft\Windows Script Host\Settings" /v Enabled /f >nul 2>&1
+reg delete "!REG_ROOT!\Software\Microsoft\Windows Script Host\Settings" /v Enabled /f >nul 2>&1
 echo    * Windows Script Host reactive.
 
 :: 2.12 Re-enable screensaver changes
-reg delete "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\System" /v NoDispScrSavPage /f >nul 2>&1
+reg delete "!REG_ROOT!\Software\Microsoft\Windows\CurrentVersion\Policies\System" /v NoDispScrSavPage /f >nul 2>&1
 echo    * Ecran de veille modifiable.
 
 :: 2.13 Re-enable wallpaper changes
-reg delete "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\ActiveDesktop" /v NoChangingWallPaper /f >nul 2>&1
+reg delete "!REG_ROOT!\Software\Microsoft\Windows\CurrentVersion\Policies\ActiveDesktop" /v NoChangingWallPaper /f >nul 2>&1
 echo    * Fond d'ecran modifiable.
 
 :: =============================================
@@ -207,11 +266,11 @@ echo.
 echo [3] Restauration acces reseau...
 
 :: 4.1 Re-enable network sharing
-reg delete "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" /v NoNetHood /f >nul 2>&1
+reg delete "!REG_ROOT!\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" /v NoNetHood /f >nul 2>&1
 echo    * Voisinage reseau visible.
 
 :: 4.2 Re-enable network settings
-reg delete "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" /v NoNetworkConnections /f >nul 2>&1
+reg delete "!REG_ROOT!\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" /v NoNetworkConnections /f >nul 2>&1
 echo    * Connexions reseau activees.
 
 :: =============================================
@@ -225,7 +284,7 @@ reg delete "HKLM\SOFTWARE\Policies\Microsoft\Windows\DeviceInstall\Restrictions"
 echo    * Installation materiel activee.
 
 :: 5.2 Re-enable Device Manager
-reg delete "HKCU\Software\Policies\Microsoft\MMC\{74246bfc-4c96-11d0-abef-0020af6b0b7a}" /f >nul 2>&1
+reg delete "!REG_ROOT!\Software\Policies\Microsoft\MMC\{74246bfc-4c96-11d0-abef-0020af6b0b7a}" /f >nul 2>&1
 echo    * Gestionnaire de peripheriques active.
 
 :: =============================================
@@ -247,31 +306,29 @@ echo    * Parametres UAC restaures.
 :: SECTION 7: PROMOTE USER TO ADMINISTRATOR
 :: =============================================
 echo.
-echo [6] Promotion de [%TARGET_USER%] en Administrateur...
+echo [6] Promotion de [!TARGET_USER!] en Administrateur...
 
 set "PROMOTE_SUCCESS=0"
 
-net localgroup Administrators "%TARGET_USER%" /add >nul 2>&1
-if %errorLevel% equ 0 set "PROMOTE_SUCCESS=1"
+:: Use detected admin group name
+net localgroup "!ADMIN_GROUP!" "!TARGET_USER!" /add >nul 2>&1
+if !errorLevel! equ 0 set "PROMOTE_SUCCESS=1"
 
-net localgroup Administrateurs "%TARGET_USER%" /add >nul 2>&1
-if %errorLevel% equ 0 set "PROMOTE_SUCCESS=1"
-
-if "%PROMOTE_SUCCESS%"=="1" (
-    echo    * Succes. %TARGET_USER% est maintenant Administrateur.
+if "!PROMOTE_SUCCESS!"=="1" (
+    echo    * Succes. !TARGET_USER! est maintenant Administrateur.
 ) else (
-    echo    * ERREUR: Impossible d'ajouter au groupe Administrateurs.
+    echo    * ERREUR ou deja membre du groupe !ADMIN_GROUP!.
 )
 
 :: =============================================
 :: SECTION 8: DISABLE BUILT-IN ADMINISTRATOR AND SUPPORT ACCOUNT
 :: =============================================
 echo.
-echo [7] Desactivation des comptes admin...
+echo [7] Gestion des comptes admin caches...
 
 :: Delete the hidden Support account if it exists
 net user Support /delete >nul 2>&1
-if %errorLevel% equ 0 (
+if !errorLevel! equ 0 (
     echo    * Compte "Support" supprime.
 ) else (
     echo    * Compte "Support" n'existait pas.
@@ -280,16 +337,17 @@ if %errorLevel% equ 0 (
 :: Remove Support from SpecialAccounts
 reg delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon\SpecialAccounts\UserList" /v Support /f >nul 2>&1
 
-:: Safety Check: Do not disable if target is the Administrator account
-if /i "%TARGET_USER%"=="Administrator" goto :SKIP_DISABLE
-if /i "%TARGET_USER%"=="Administrateur" goto :SKIP_DISABLE
+:: IMPORTANT: Make Administrator VISIBLE again on login screen
+reg delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon\SpecialAccounts\UserList" /v Administrator /f >nul 2>&1
+echo    * Compte Administrator rendu VISIBLE sur l'ecran de connexion.
 
-if "%PROMOTE_SUCCESS%"=="1" (
-    net user Administrator /active:no >nul 2>&1
-    echo    * Compte Administrator desactive.
-) else (
-    echo    * ATTENTION: Promotion echouee. Compte Administrator reste actif.
-)
+:: Safety Check: Do not disable if target is the Administrator account
+if /i "!TARGET_USER!"=="Administrator" goto :SKIP_DISABLE
+if /i "!TARGET_USER!"=="Administrateur" goto :SKIP_DISABLE
+
+:: Disable Administrator account
+net user Administrator /active:no >nul 2>&1
+echo    * Compte Administrator desactive.
 goto :CONTINUE
 
 :SKIP_DISABLE
@@ -312,26 +370,35 @@ echo    * Timeout boot restaure.
 echo.
 echo [9] Nettoyage des politiques restantes...
 
-:: Remove any remaining Explorer restrictions
+:: Remove any remaining Explorer restrictions from target user
 for %%R in (NoControlPanel NoRun NoDrives NoNetHood NoNetworkConnections SettingsPageVisibility NoDateTimeControlPanel NoPropertiesMyComputer NoDriveTypeAutoRun) do (
-    reg delete "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" /v %%R /f >nul 2>&1
+    reg delete "!REG_ROOT!\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" /v %%R /f >nul 2>&1
 )
 
-:: Remove System policies for this user
+:: Remove System policies for target user
 for %%R in (DisableRegistryTools DisableTaskMgr NoDispScrSavPage) do (
-    reg delete "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\System" /v %%R /f >nul 2>&1
+    reg delete "!REG_ROOT!\Software\Microsoft\Windows\CurrentVersion\Policies\System" /v %%R /f >nul 2>&1
 )
 
 :: Remove ActiveDesktop policies
-reg delete "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\ActiveDesktop" /v NoChangingWallPaper /f >nul 2>&1
+reg delete "!REG_ROOT!\Software\Microsoft\Windows\CurrentVersion\Policies\ActiveDesktop" /v NoChangingWallPaper /f >nul 2>&1
 
 :: Remove Windows Script Host block
-reg delete "HKCU\Software\Microsoft\Windows Script Host\Settings" /v Enabled /f >nul 2>&1
+reg delete "!REG_ROOT!\Software\Microsoft\Windows Script Host\Settings" /v Enabled /f >nul 2>&1
+
+:: Remove MMC restrictions
+reg delete "!REG_ROOT!\Software\Policies\Microsoft\MMC\{74246bfc-4c96-11d0-abef-0020af6b0b7a}" /f >nul 2>&1
 
 :: Re-enable Remote Desktop (optional)
 reg add "HKLM\SYSTEM\CurrentControlSet\Control\Terminal Server" /v fDenyTSConnections /t REG_DWORD /d 0 /f >nul 2>&1
 
 echo    * Toutes les politiques nettoyees.
+
+:: Unload the registry hive if we loaded it
+if "!USER_REG_LOADED!"=="1" (
+    reg unload "HKU\!TARGET_SID!" >nul 2>&1
+    echo    * Registre utilisateur decharge.
+)
 
 :: =============================================
 :: SECTION 11: REMOVE ADMIN LAUNCHER
@@ -352,9 +419,8 @@ if not exist "%SHORTCUT_PATH%" (
 :: Remove NoWin folder from Program Files
 set "NOWIN_DIR=C:\Program Files\NoWin"
 if exist "%NOWIN_DIR%" (
-    :: Remove protection first
-    icacls "%NOWIN_DIR%" /remove:d "Users" >nul 2>&1
-    icacls "%NOWIN_DIR%" /remove:d "Utilisateurs" >nul 2>&1
+    :: Remove protection first (using detected group name)
+    icacls "%NOWIN_DIR%" /remove:d "!USERS_GROUP!" >nul 2>&1
     rd /s /q "%NOWIN_DIR%" >nul 2>&1
     if not exist "%NOWIN_DIR%" (
         echo    * Dossier NoWin supprime.
@@ -370,10 +436,10 @@ if exist "%NOWIN_DIR%" (
 :: =============================================
 echo.
 echo ==========================================
-echo     USER UNLOCK TERMINE (v2.3)
+echo     USER UNLOCK TERMINE (v2.4)
 echo ==========================================
 echo.
-echo Utilisateur [%TARGET_USER%] entierement restaure:
+echo Utilisateur [!TARGET_USER!] entierement restaure:
 echo  [+] Droits Administrateur accordes
 echo  [+] Panneau de configuration
 echo  [+] Editeur de registre
@@ -387,6 +453,7 @@ echo  [+] Fond d'ecran / Ecran de veille
 echo  [+] Windows Script Host
 echo  [-] Lanceur Admin supprime
 echo  [+] Bureau a distance
+echo  [+] Administrator visible sur ecran connexion
 echo.
 echo Deconnexion dans 5 secondes...
 timeout /t 5
@@ -394,5 +461,5 @@ shutdown /l
 
 :CONFIRM_AGAIN
 echo.
-echo Nouvelle cible: [%TARGET_USER%]
+echo Nouvelle cible: [!TARGET_USER!]
 goto :ASK_CONFIRM

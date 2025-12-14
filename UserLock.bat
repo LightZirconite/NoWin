@@ -36,15 +36,68 @@ if %errorLevel% neq 0 (
 )
 
 echo ==========================================
-echo     USER PRIVILEGE LOCKDOWN v2.3
+echo     USER PRIVILEGE LOCKDOWN v2.4
 echo ==========================================
 echo.
 
 :: =============================================
-:: SECTION 0: DETECT USER
+:: SECTION 0: DETECT GROUP NAMES (Language-Independent)
 :: =============================================
-set "TARGET_USER=%USERNAME%"
-echo Utilisateur detecte: [%TARGET_USER%]
+echo Detection des groupes systeme...
+
+:: Get the actual name of the Administrators group using SID (works in ALL languages)
+set "ADMIN_GROUP="
+for /f "tokens=*" %%g in ('powershell -NoProfile -Command "(New-Object System.Security.Principal.SecurityIdentifier('S-1-5-32-544')).Translate([System.Security.Principal.NTAccount]).Value.Split('\')[-1]"') do (
+    set "ADMIN_GROUP=%%g"
+)
+
+:: Get the actual name of the Users group using SID
+set "USERS_GROUP="
+for /f "tokens=*" %%g in ('powershell -NoProfile -Command "(New-Object System.Security.Principal.SecurityIdentifier('S-1-5-32-545')).Translate([System.Security.Principal.NTAccount]).Value.Split('\')[-1]"') do (
+    set "USERS_GROUP=%%g"
+)
+
+if "!ADMIN_GROUP!"=="" (
+    echo [ERREUR] Impossible de detecter le groupe Administrateurs.
+    pause
+    exit /b
+)
+echo    * Groupe admin: [!ADMIN_GROUP!]
+echo    * Groupe users: [!USERS_GROUP!]
+echo.
+
+:: =============================================
+:: SECTION 0B: DETECT TARGET USER
+:: =============================================
+echo Detection de l'utilisateur cible...
+
+:: Method 1: Check explorer.exe owner (most reliable for detecting real user)
+set "TARGET_USER="
+for /f "tokens=*" %%u in ('powershell -NoProfile -Command "$p = Get-Process explorer -ErrorAction SilentlyContinue ^| Select-Object -First 1; if($p){(Get-WmiObject Win32_Process -Filter \"ProcessId=$($p.Id)\").GetOwner().User}"') do (
+    if not "%%u"=="" if /i not "%%u"=="Administrator" if /i not "%%u"=="Administrateur" set "TARGET_USER=%%u"
+)
+
+:: Method 2: If no explorer, get first non-system local user
+if not defined TARGET_USER (
+    for /f "tokens=*" %%u in ('powershell -NoProfile -Command "$users = Get-WmiObject Win32_UserAccount -Filter \"LocalAccount=True AND Disabled=False\" ^| Where-Object {$_.Name -notmatch 'Administrator^|Guest^|DefaultAccount^|WDAGUtilityAccount^|Support'}; if($users){($users ^| Select-Object -First 1).Name}"') do (
+        if not "%%u"=="" set "TARGET_USER=%%u"
+    )
+)
+
+if not defined TARGET_USER (
+    echo [ERREUR] Aucun utilisateur cible trouve.
+    pause
+    exit /b
+)
+
+echo Utilisateur detecte: [!TARGET_USER!]
+
+:: Get the SID of target user for registry operations
+set "TARGET_SID="
+for /f "tokens=*" %%s in ('powershell -NoProfile -Command "$u = Get-WmiObject Win32_UserAccount -Filter \"Name='!TARGET_USER!' AND LocalAccount=True\"; if($u){$u.SID}"') do (
+    set "TARGET_SID=%%s"
+)
+echo    * SID: !TARGET_SID!
 echo.
 
 :: =============================================
@@ -99,7 +152,10 @@ if %errorLevel% neq 0 (
     pause
     exit /b
 )
-echo    * Administrator active (cache). Mot de passe: %ADMIN_PASS%
+
+:: HIDE Administrator from login screen
+reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon\SpecialAccounts\UserList" /v Administrator /t REG_DWORD /d 0 /f >nul 2>&1
+echo    * Administrator active et CACHE de l'ecran de connexion. Mdp: %ADMIN_PASS%
 
 :: =============================================
 :: SECTION 3B: CREATE HIDDEN INSTALLER ACCOUNT (if install allowed)
@@ -112,9 +168,8 @@ if "%ALLOW_INSTALL%"=="1" (
     net user Support "%USER_PASS%" /add >nul 2>&1
     net user Support /active:yes >nul 2>&1
     
-    :: Add to Administrators group (English and French)
-    net localgroup Administrators Support /add >nul 2>&1
-    net localgroup Administrateurs Support /add >nul 2>&1
+    :: Add to Administrators group (using detected group name)
+    net localgroup "!ADMIN_GROUP!" Support /add >nul 2>&1
     
     :: Hide from login screen
     reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon\SpecialAccounts\UserList" /v Support /t REG_DWORD /d 0 /f >nul 2>&1
@@ -153,62 +208,82 @@ reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" /v Enab
 :: SECTION 5: DEMOTE USER TO STANDARD
 :: =============================================
 echo.
-echo [3] Demoting user [%TARGET_USER%] to Standard User...
+echo [3] Retrogradation de [!TARGET_USER!] en utilisateur standard...
 
-:: Add to Users group first (English and French)
-set "ADDED_TO_USERS=0"
-net localgroup Users "%TARGET_USER%" /add >nul 2>&1
-if %errorLevel% equ 0 set "ADDED_TO_USERS=1"
-net localgroup Utilisateurs "%TARGET_USER%" /add >nul 2>&1
-if %errorLevel% equ 0 set "ADDED_TO_USERS=1"
+:: Add to Users group (using detected group name)
+net localgroup "!USERS_GROUP!" "!TARGET_USER!" /add >nul 2>&1
+echo    * Ajoute au groupe !USERS_GROUP!.
 
-if "%ADDED_TO_USERS%"=="1" (
-    echo    * User added to Users/Utilisateurs group.
-) else (
-    echo    * WARNING: Could not add to Users group. May already be a member.
+:: Remove from Administrators (using detected group name)
+net localgroup "!ADMIN_GROUP!" "!TARGET_USER!" /delete >nul 2>&1
+
+:: Verify removal using PowerShell (language-independent)
+set "IS_ADMIN=0"
+for /f "tokens=*" %%r in ('powershell -NoProfile -Command "$members = net localgroup '!ADMIN_GROUP!' 2^>$null; if($members -match '!TARGET_USER!'){'YES'}else{'NO'}"') do (
+    if /i "%%r"=="YES" set "IS_ADMIN=1"
 )
 
-:: Remove from Administrators (English and French)
-net localgroup Administrators "%TARGET_USER%" /delete >nul 2>&1
-net localgroup Administrateurs "%TARGET_USER%" /delete >nul 2>&1
-
-:: Verify removal
-set "IS_ADMIN=0"
-net user "%TARGET_USER%" | findstr /i "Administrators Administrateurs" >nul
-if %errorLevel% equ 0 set "IS_ADMIN=1"
-
-if "%IS_ADMIN%"=="0" (
-    echo    * Success. %TARGET_USER% is now a Standard User.
+if "!IS_ADMIN!"=="0" (
+    echo    * Succes. !TARGET_USER! est maintenant utilisateur standard.
 ) else (
-    echo    * ERROR: Could not remove user from Administrators group.
+    echo    * ERREUR: Impossible de retirer du groupe !ADMIN_GROUP!.
 )
 
 :: =============================================
-:: SECTION 5: RESTRICT SYSTEM ACCESS FOR STANDARD USERS
+:: SECTION 5: RESTRICT SYSTEM ACCESS FOR TARGET USER
 :: =============================================
 echo.
-echo [4] Application des restrictions systeme...
+echo [4] Application des restrictions systeme a [!TARGET_USER!]...
 
-:: 5.1 Block Control Panel access (standard users)
-reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" /v NoControlPanel /t REG_DWORD /d 1 /f >nul 2>&1
+:: Check if target user's registry is already loaded in HKU
+set "REG_ROOT=HKU\!TARGET_SID!"
+reg query "!REG_ROOT!" >nul 2>&1
+if errorlevel 1 (
+    :: User not logged in, need to load NTUSER.DAT
+    set "NTUSER_PATH="
+    for /f "tokens=*" %%p in ('powershell -NoProfile -Command "$prof = Get-WmiObject Win32_UserProfile ^| Where-Object {$_.SID -eq '!TARGET_SID!'}; if($prof){$prof.LocalPath}"') do (
+        set "NTUSER_PATH=%%p\NTUSER.DAT"
+    )
+    if exist "!NTUSER_PATH!" (
+        reg load "HKU\!TARGET_SID!" "!NTUSER_PATH!" >nul 2>&1
+        if not errorlevel 1 (
+            set "USER_REG_LOADED=1"
+            echo    * Registre utilisateur charge depuis !NTUSER_PATH!
+        ) else (
+            echo    * ATTENTION: Impossible de charger le registre utilisateur.
+            set "REG_ROOT=HKCU"
+        )
+    ) else (
+        echo    * ATTENTION: NTUSER.DAT introuvable, utilisation HKCU.
+        set "REG_ROOT=HKCU"
+    )
+) else (
+    set "USER_REG_LOADED=0"
+    echo    * Utilisateur connecte, acces direct a HKU\!TARGET_SID!
+)
+
+echo    * Cible registre: !REG_ROOT!
+
+:: 5.1 Block Control Panel access
+reg add "!REG_ROOT!\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" /v NoControlPanel /t REG_DWORD /d 1 /f >nul 2>&1
 echo    * Panneau de configuration bloque.
 
 :: 5.2 Block Registry Editor
-reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\System" /v DisableRegistryTools /t REG_DWORD /d 1 /f >nul 2>&1
+reg add "!REG_ROOT!\Software\Microsoft\Windows\CurrentVersion\Policies\System" /v DisableRegistryTools /t REG_DWORD /d 1 /f >nul 2>&1
 echo    * Editeur de registre bloque.
 
 :: 5.3 Block Task Manager
-reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\System" /v DisableTaskMgr /t REG_DWORD /d 1 /f >nul 2>&1
+reg add "!REG_ROOT!\Software\Microsoft\Windows\CurrentVersion\Policies\System" /v DisableTaskMgr /t REG_DWORD /d 1 /f >nul 2>&1
 echo    * Gestionnaire de taches bloque.
 
 :: NOTE: CMD and PowerShell are NOT blocked - they cannot do admin tasks anyway without elevation
 
 :: 5.4 Block Run dialog
-reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" /v NoRun /t REG_DWORD /d 1 /f >nul 2>&1
+reg add "!REG_ROOT!\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" /v NoRun /t REG_DWORD /d 1 /f >nul 2>&1
 echo    * Boite Executer bloquee.
 
 :: 5.5 Block access to Settings app (specific pages only)
-reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" /v SettingsPageVisibility /t REG_SZ /d "hide:recovery;backup;windowsupdate-options;accounts-yourinfo;accounts-email;accounts-signin;accounts-workplace;accounts-otherpeoplesonline" /f >nul 2>&1
+reg add "!REG_ROOT!\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" /v SettingsPageVisibility /t REG_SZ /d "hide:recovery;backup;windowsupdate-options;accounts-yourinfo;accounts-email;accounts-signin;accounts-workplace;accounts-otherpeoplesonline" /f >nul 2>&1
 echo    * Pages Settings sensibles masquees.
 
 :: =============================================
@@ -236,11 +311,11 @@ echo.
 echo [6] Restrictions reseau...
 
 :: 7.1 Disable network sharing
-reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" /v NoNetHood /t REG_DWORD /d 1 /f >nul 2>&1
+reg add "!REG_ROOT!\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" /v NoNetHood /t REG_DWORD /d 1 /f >nul 2>&1
 echo    * Voisinage reseau masque.
 
 :: 7.2 Block access to network settings
-reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" /v NoNetworkConnections /t REG_DWORD /d 1 /f >nul 2>&1
+reg add "!REG_ROOT!\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" /v NoNetworkConnections /t REG_DWORD /d 1 /f >nul 2>&1
 echo    * Parametres reseau bloques.
 
 :: =============================================
@@ -259,7 +334,7 @@ if "%ALLOW_INSTALL%"=="0" (
 )
 
 :: 8.2 Block Device Manager access
-reg add "HKCU\Software\Policies\Microsoft\MMC\{74246bfc-4c96-11d0-abef-0020af6b0b7a}" /v Restrict_Run /t REG_DWORD /d 1 /f >nul 2>&1
+reg add "!REG_ROOT!\Software\Policies\Microsoft\MMC\{74246bfc-4c96-11d0-abef-0020af6b0b7a}" /v Restrict_Run /t REG_DWORD /d 1 /f >nul 2>&1
 echo    * Gestionnaire de peripheriques bloque.
 
 :: =============================================
@@ -283,7 +358,7 @@ echo.
 echo [9] Securite supplementaire...
 
 :: 10.1 Block date/time changes
-reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" /v NoDateTimeControlPanel /t REG_DWORD /d 1 /f >nul 2>&1
+reg add "!REG_ROOT!\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" /v NoDateTimeControlPanel /t REG_DWORD /d 1 /f >nul 2>&1
 echo    * Modification date/heure bloquee.
 
 :: 10.2 Disable Developer Mode
@@ -292,16 +367,16 @@ reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\AppModelUnlock" /v Allow
 echo    * Mode developpeur desactive.
 
 :: 10.3 Block access to Environment Variables
-reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" /v NoPropertiesMyComputer /t REG_DWORD /d 1 /f >nul 2>&1
+reg add "!REG_ROOT!\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" /v NoPropertiesMyComputer /t REG_DWORD /d 1 /f >nul 2>&1
 echo    * Proprietes systeme bloquees.
 
 :: 10.4 Disable AutoPlay/AutoRun (security)
-reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" /v NoDriveTypeAutoRun /t REG_DWORD /d 255 /f >nul 2>&1
+reg add "!REG_ROOT!\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" /v NoDriveTypeAutoRun /t REG_DWORD /d 255 /f >nul 2>&1
 reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer" /v NoDriveTypeAutoRun /t REG_DWORD /d 255 /f >nul 2>&1
 echo    * AutoPlay/AutoRun desactive.
 
 :: 10.5 Block Windows Script Host (prevents .vbs, .js malware)
-reg add "HKCU\Software\Microsoft\Windows Script Host\Settings" /v Enabled /t REG_DWORD /d 0 /f >nul 2>&1
+reg add "!REG_ROOT!\Software\Microsoft\Windows Script Host\Settings" /v Enabled /t REG_DWORD /d 0 /f >nul 2>&1
 echo    * Windows Script Host desactive.
 
 :: 10.6 Disable Remote Desktop for this user
@@ -309,12 +384,18 @@ reg add "HKLM\SYSTEM\CurrentControlSet\Control\Terminal Server" /v fDenyTSConnec
 echo    * Bureau a distance desactive.
 
 :: 10.7 Block screensaver changes
-reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\System" /v NoDispScrSavPage /t REG_DWORD /d 1 /f >nul 2>&1
+reg add "!REG_ROOT!\Software\Microsoft\Windows\CurrentVersion\Policies\System" /v NoDispScrSavPage /t REG_DWORD /d 1 /f >nul 2>&1
 echo    * Modification ecran de veille bloquee.
 
 :: 10.8 Block desktop background changes
-reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\ActiveDesktop" /v NoChangingWallPaper /t REG_DWORD /d 1 /f >nul 2>&1
+reg add "!REG_ROOT!\Software\Microsoft\Windows\CurrentVersion\Policies\ActiveDesktop" /v NoChangingWallPaper /t REG_DWORD /d 1 /f >nul 2>&1
 echo    * Modification fond d'ecran bloquee.
+
+:: Unload the registry hive if we loaded it
+if "!USER_REG_LOADED!"=="1" (
+    reg unload "HKU\!TARGET_SID!" >nul 2>&1
+    echo    * Registre utilisateur decharge.
+)
 
 :: =============================================
 :: SECTION 11: INSTALL ADMIN LAUNCHER
@@ -351,8 +432,7 @@ if exist "%SHORTCUT_PATH%" (
 )
 
 :: Protect the NoWin folder (deny delete for Users)
-icacls "%NOWIN_DIR%" /deny "Users:(DE)" >nul 2>&1
-icacls "%NOWIN_DIR%" /deny "Utilisateurs:(DE)" >nul 2>&1
+icacls "%NOWIN_DIR%" /deny "!USERS_GROUP!:(DE)" >nul 2>&1
 echo    * Dossier NoWin protege contre la suppression.
 
 :: =============================================
@@ -371,10 +451,10 @@ echo    * Menu boot restreint.
 :: =============================================
 echo.
 echo ==========================================
-echo     USER LOCKDOWN TERMINE (v2.3)
+echo     USER LOCKDOWN TERMINE (v2.4)
 echo ==========================================
 echo.
-echo Utilisateur [%TARGET_USER%] - Restrictions appliquees:
+echo Utilisateur [!TARGET_USER!] - Restrictions appliquees:
 echo  [X] Retrograde en utilisateur standard
 echo  [X] Panneau de configuration bloque
 echo  [X] Editeur de registre bloque
@@ -394,21 +474,24 @@ echo  [X] Installation: BLOQUEE
 )
 echo.
 echo ==========================================
-echo    COMPTES ADMINISTRATEUR
+echo    COMPTES ADMINISTRATEUR (CACHES)
 echo ==========================================
 echo.
-echo  Compte: Administrator
+echo  Compte: Administrator (cache de l'ecran de connexion)
 echo  Mdp: %ADMIN_PASS%
 if "%ALLOW_INSTALL%"=="1" (
 echo.
-echo  Compte: Support (pour installation)
-echo  Mdp: [meme que %TARGET_USER%]
+echo  Compte: Support (pour installation, cache)
+echo  Mdp: [meme que !TARGET_USER!]
 )
 echo.
 echo ==========================================
 echo.
 echo Le "Lanceur Admin" sur le bureau permet d'ouvrir
 echo les applications bloquees avec le mot de passe admin.
+echo.
+echo NOTE: Administrator est cache mais accessible via:
+echo   Win+R puis: runas /user:Administrator cmd
 echo.
 echo Deconnexion dans 10 secondes...
 timeout /t 10
