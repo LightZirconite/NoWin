@@ -88,52 +88,14 @@ goto :MENU
 :: =============================================
 :SHOW_SPLASH
 mode con: cols=150 lines=40 >nul 2>&1
-
 cls
 echo.
 echo =============================================================
 echo                    NoWin Admin Launcher
 echo =============================================================
 echo.
-echo    Preparing system access... [■         ]
-powershell -NoProfile -Command "Start-Sleep -Milliseconds 100" >nul 2>&1
-
-cls
-echo.
-echo =============================================================
-echo                    NoWin Admin Launcher
-echo =============================================================
-echo.
-echo    Preparing system access... [■■■       ]
-powershell -NoProfile -Command "Start-Sleep -Milliseconds 100" >nul 2>&1
-
-cls
-echo.
-echo =============================================================
-echo                    NoWin Admin Launcher
-echo =============================================================
-echo.
-echo    Preparing system access... [■■■■■■    ]
-powershell -NoProfile -Command "Start-Sleep -Milliseconds 100" >nul 2>&1
-
-cls
-echo.
-echo =============================================================
-echo                    NoWin Admin Launcher
-echo =============================================================
-echo.
-echo    Preparing system access... [■■■■■■■■■ ]
-powershell -NoProfile -Command "Start-Sleep -Milliseconds 100" >nul 2>&1
-
-cls
-echo.
-echo =============================================================
-echo                       LANCEUR ADMIN - NOWIN
-echo =============================================================
-echo                Acces rapides et scripts systeme
-echo =============================================================
-echo.
-powershell -NoProfile -Command "Start-Sleep -Milliseconds 400" >nul 2>&1
+echo    Loading...
+timeout /t 1 /nobreak >nul
 exit /b
 
 :: =============================================
