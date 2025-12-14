@@ -1,22 +1,44 @@
 @echo off
 chcp 65001 >nul 2>&1
 setlocal EnableDelayedExpansion
-:: ============================================
-:: ADMINLAUNCHER.BAT - Self-Installing Admin Launcher
-:: Version 2.8 - Auto-update from GitHub
-:: ============================================
-:: This script:
-:: 1. Auto-updates from GitHub if newer version available
-:: 2. Auto-installs itself to Program Files\NoWin if not already there
-:: 3. Creates a protected desktop shortcut
-:: 4. Launches apps as Administrator via runas (password in terminal)
-::
-:: Usage:
-::   AdminLauncher.bat              - Normal: install if needed, then menu
-::   AdminLauncher.bat --install    - Install only, no menu (for UserLock)
-::   AdminLauncher.bat --no-update  - Skip update check
+:: Protected Admin Launcher - NoWin v3.0
+:: Security: Anti-copy, Anti-tampering, Obfuscated
 
 title Lanceur Administrateur - NoWin
+
+:: =============================================
+:: SECURITY CHECK: Verify Execution Location
+:: =============================================
+set "AUTHORIZED_PATH=C:\Program Files\NoWin\AdminLauncher.bat"
+set "CURRENT_PATH=%~f0"
+
+:: Allow execution from temp during update/install only
+echo %CURRENT_PATH% | findstr /i "temp" >nul
+if %errorLevel% equ 0 goto :CHECK_INSTALL_MODE
+
+:: Allow execution from Downloads only for initial install
+echo %CURRENT_PATH% | findstr /i "downloads" >nul
+if %errorLevel% equ 0 goto :CHECK_INSTALL_MODE
+
+:: If not from authorized location, block execution
+if /i not "%CURRENT_PATH%"=="%AUTHORIZED_PATH%" (
+    cls
+    echo.
+    echo ==========================================================
+    echo   ACCES REFUSE
+    echo ==========================================================
+    echo.
+    echo   Ce script doit etre execute depuis:
+    echo   %AUTHORIZED_PATH%
+    echo.
+    echo   Tentative d'execution non autorisee detectee.
+    echo.
+    echo ==========================================================
+    timeout /t 5 /nobreak >nul
+    exit /b 1
+)
+
+:CHECK_INSTALL_MODE
 
 :: Check for parameters
 set "INSTALL_ONLY=0"
@@ -128,6 +150,14 @@ if not exist "%INSTALLED_PATH%" (
     exit /b 1
 )
 
+:: Set restrictive NTFS permissions: Admin Full Control only
+if "%INSTALL_ONLY%"=="0" echo [2a/4] Application des permissions securisees...
+icacls "%INSTALLED_PATH%" /inheritance:r >nul 2>&1
+icacls "%INSTALLED_PATH%" /grant "Administrators:(F)" >nul 2>&1
+icacls "%INSTALLED_PATH%" /grant "SYSTEM:(F)" >nul 2>&1
+icacls "%INSTALLED_PATH%" /deny "*S-1-5-32-545:(W,DC,AD,WD,DE)" >nul 2>&1
+attrib +s +h +r "%INSTALLED_PATH%" >nul 2>&1
+
 if "%INSTALL_ONLY%"=="0" echo [3/4] Telechargement de l'icone...
 powershell -NoProfile -Command "try { Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/LightZirconite/NoWin/main/logo.ico' -OutFile '%INSTALL_DIR%\logo.ico' -ErrorAction Stop } catch { }" >nul 2>&1
 
@@ -137,11 +167,12 @@ powershell -NoProfile -Command "$ws = New-Object -ComObject WScript.Shell; $s = 
 :: Protect shortcut (read-only + system)
 attrib +r +s "%SHORTCUT_PATH%" >nul 2>&1
 
-:: Protect folder (deny delete for Users group)
-:: Get Users group name dynamically
-for /f "tokens=*" %%g in ('powershell -NoProfile -Command "(New-Object System.Security.Principal.SecurityIdentifier('S-1-5-32-545')).Translate([System.Security.Principal.NTAccount]).Value.Split('\')[-1]"') do (
-    icacls "%INSTALL_DIR%" /deny "%%g:(DE)" >nul 2>&1
-)
+:: Protect folder (deny write/delete for Users group)
+icacls "%INSTALL_DIR%" /inheritance:r >nul 2>&1
+icacls "%INSTALL_DIR%" /grant "Administrators:(OI)(CI)(F)" >nul 2>&1
+icacls "%INSTALL_DIR%" /grant "SYSTEM:(OI)(CI)(F)" >nul 2>&1
+icacls "%INSTALL_DIR%" /grant "*S-1-5-32-545:(OI)(CI)(RX)" >nul 2>&1
+icacls "%INSTALL_DIR%" /deny "*S-1-5-32-545:(W,DC,AD,WD,DE)" >nul 2>&1
 
 :: Show success message
 if "%INSTALL_ONLY%"=="1" (
@@ -158,7 +189,8 @@ echo ==========================================================
 echo.
 echo   * Script installe dans: %INSTALL_DIR%
 echo   * Raccourci cree sur le bureau public
-echo   * Dossier protege contre la suppression
+echo   * Fichier protege: Lecture/Execution Admin uniquement
+echo   * Dossier protege contre modification/suppression
 echo.
 echo   Vous pouvez maintenant utiliser le raccourci
 echo   "Lanceur Admin" sur le bureau.
@@ -175,28 +207,28 @@ goto :MENU
 cls
 echo.
 echo ==========================================================
-echo ^|           LANCEUR ADMINISTRATEUR - NoWin                 |
+echo           LANCEUR ADMINISTRATEUR - NoWin
 echo ==========================================================
-echo ^|                                                          |
-echo ^|   [1]  Panneau de configuration                          |
-echo ^|   [2]  Gestionnaire des taches                           |
-echo ^|   [3]  Editeur de registre                               |
-echo ^|   [4]  Gestionnaire de peripheriques                     |
-echo ^|   [5]  Parametres Windows                                |
-echo ^|   [6]  Connexions reseau                                 |
-echo ^|   [7]  Gestion de l'ordinateur                           |
-echo ^|   [8]  Informations systeme                              |
-echo ^|   [9]  Services Windows                                  |
-echo ^|   [10] Invite de commandes (Admin)                       |
-echo ^|   [11] PowerShell (Admin)                                |
-echo ^|   [12] Explorateur de fichiers (Admin)                   |
-echo ^|                                                          |
-echo ^|   [C]  Application personnalisee                         |
-echo ^|   [U]  Lancer UserUnlock - restaurer droits              |
-echo ^|   [I]  Reinstaller ce lanceur                            |
-echo ^|                                                          |
-echo ^|   [0]  Quitter                                           |
-echo ^|                                                          |
+echo.
+echo    [1]  Panneau de configuration
+echo    [2]  Gestionnaire des taches
+echo    [3]  Editeur de registre
+echo    [4]  Gestionnaire de peripheriques
+echo    [5]  Parametres Windows
+echo    [6]  Connexions reseau
+echo    [7]  Gestion de l'ordinateur
+echo    [8]  Informations systeme
+echo    [9]  Services Windows
+echo    [10] Invite de commandes (Admin)
+echo    [11] PowerShell (Admin)
+echo    [12] Explorateur de fichiers (Admin)
+echo.
+echo    [C]  Application personnalisee
+echo    [U]  Lancer UserUnlock - restaurer droits
+echo    [I]  Reinstaller ce lanceur
+echo.
+echo    [0]  Quitter
+echo.
 echo ==========================================================
 echo.
 set /p "CHOICE=Choisissez une option: "
@@ -206,14 +238,14 @@ if /i "%CHOICE%"=="1" set "APP=control.exe" & set "APPNAME=Panneau de configurat
 if /i "%CHOICE%"=="2" set "APP=taskmgr.exe" & set "APPNAME=Gestionnaire des taches" & goto :LAUNCH
 if /i "%CHOICE%"=="3" set "APP=regedit.exe" & set "APPNAME=Editeur de registre" & goto :LAUNCH
 if /i "%CHOICE%"=="4" set "APP=mmc.exe devmgmt.msc" & set "APPNAME=Gestionnaire de peripheriques" & goto :LAUNCH
-if /i "%CHOICE%"=="5" set "APP=cmd.exe /c start ms-settings:" & set "APPNAME=Parametres Windows" & goto :LAUNCH
+if /i "%CHOICE%"=="5" set "APP=control.exe /name Microsoft.Display" & set "APPNAME=Parametres Windows" & goto :LAUNCH
 if /i "%CHOICE%"=="6" set "APP=control.exe ncpa.cpl" & set "APPNAME=Connexions reseau" & goto :LAUNCH
 if /i "%CHOICE%"=="7" set "APP=mmc.exe compmgmt.msc" & set "APPNAME=Gestion de l'ordinateur" & goto :LAUNCH
 if /i "%CHOICE%"=="8" set "APP=msinfo32.exe" & set "APPNAME=Informations systeme" & goto :LAUNCH
 if /i "%CHOICE%"=="9" set "APP=mmc.exe services.msc" & set "APPNAME=Services Windows" & goto :LAUNCH
 if /i "%CHOICE%"=="10" set "APP=cmd.exe" & set "APPNAME=Invite de commandes" & goto :LAUNCH_CMD
 if /i "%CHOICE%"=="11" set "APP=powershell.exe" & set "APPNAME=PowerShell" & goto :LAUNCH_CMD
-if /i "%CHOICE%"=="12" set "APP=explorer.exe /e," & set "APPNAME=Explorateur" & goto :LAUNCH
+if /i "%CHOICE%"=="12" set "APP=explorer.exe /e,C:\" & set "APPNAME=Explorateur" & goto :LAUNCH
 
 if /i "%CHOICE%"=="C" goto :CUSTOM
 if /i "%CHOICE%"=="U" goto :USERUNLOCK
@@ -276,7 +308,7 @@ echo.
 if /i "%APP%"=="cmd.exe" (
     runas /user:Administrator "cmd.exe /k title CMD Administrator - NoWin"
 ) else (
-    runas /user:Administrator "powershell.exe -NoExit -Command $Host.UI.RawUI.WindowTitle='PowerShell Admin - NoWin'"
+    runas /user:Administrator "powershell.exe -NoExit -Command \"$Host.UI.RawUI.WindowTitle='PowerShell Admin - NoWin'\""
 )
 
 if %errorLevel% neq 0 (
@@ -371,7 +403,7 @@ echo.
 echo Lancement de UserUnlock.bat en tant qu'Administrator...
 echo.
 
-runas /user:Administrator "cmd.exe /c \"%TEMP_DIR%\UserUnlock.bat\""
+runas /user:Administrator "cmd.exe /c \"%TEMP_DIR%\UserUnlock.bat\" && pause"
 
 if %errorLevel% neq 0 (
     echo.
