@@ -14,11 +14,11 @@ set "CURRENT_PATH=%~f0"
 
 :: Allow execution from temp during update/install only
 echo %CURRENT_PATH% | findstr /i "temp" >nul
-if %errorLevel% equ 0 goto :CHECK_INSTALL_MODE
+if !errorLevel! equ 0 goto :CHECK_INSTALL_MODE
 
 :: Allow execution from Downloads only for initial install
 echo %CURRENT_PATH% | findstr /i "downloads" >nul
-if %errorLevel% equ 0 goto :CHECK_INSTALL_MODE
+if !errorLevel! equ 0 goto :CHECK_INSTALL_MODE
 
 :: If not from authorized location, block execution
 if /i not "%CURRENT_PATH%"=="%AUTHORIZED_PATH%" (
@@ -42,105 +42,18 @@ if /i not "%CURRENT_PATH%"=="%AUTHORIZED_PATH%" (
 
 :: Check for parameters
 set "INSTALL_ONLY=0"
-set "SKIP_UPDATE=0"
 if /i "%~1"=="--install" set "INSTALL_ONLY=1"
 if /i "%~1"=="-i" set "INSTALL_ONLY=1"
-if /i "%~1"=="--no-update" set "SKIP_UPDATE=1"
-if /i "%~2"=="--no-update" set "SKIP_UPDATE=1"
 
 :: =============================================
-:: SECTION 0: AUTO-UPDATE CHECK
+:: SECTION 0: AUTO-UPDATE (DESACTIVE)
 :: =============================================
 set "INSTALL_DIR=C:\Program Files\NoWin"
 set "SHORTCUT_PATH=C:\Users\Public\Desktop\Lanceur Admin.lnk"
 set "CURRENT_PATH=%~f0"
 set "INSTALLED_PATH=%INSTALL_DIR%\AdminLauncher.bat"
-set "GITHUB_URL=https://raw.githubusercontent.com/LightZirconite/NoWin/main/AdminLauncher.bat"
-
-:: Skip update if --no-update or not installed yet
-if "%SKIP_UPDATE%"=="1" goto :SKIP_UPDATE_CHECK
-if not exist "%INSTALLED_PATH%" goto :SKIP_UPDATE_CHECK
-if /i not "%CURRENT_PATH%"=="%INSTALLED_PATH%" goto :SKIP_UPDATE_CHECK
-
-:: Check for updates from GitHub
-set "TEMP_UPDATE=%TEMP%\AdminLauncher_update.bat"
-
-echo Verification des mises a jour...
-powershell -NoProfile -WindowStyle Hidden -Command "try { Invoke-WebRequest -UseBasicParsing -Uri '%GITHUB_URL%' -OutFile '%TEMP_UPDATE%' -TimeoutSec 5 -ErrorAction Stop; exit 0 } catch { exit 1 }" >nul 2>&1
-
-if %errorLevel% equ 0 (
-    if exist "%TEMP_UPDATE%" (
-        :: Compare files using hash (reliable method)
-        set "UPDATE_NEEDED=0"
-        
-        for /f "tokens=*" %%H in ('powershell -NoProfile -Command "(Get-FileHash -Algorithm MD5 -Path '%CURRENT_PATH%').Hash"') do set "LOCAL_HASH=%%H"
-        for /f "tokens=*" %%H in ('powershell -NoProfile -Command "(Get-FileHash -Algorithm MD5 -Path '%TEMP_UPDATE%').Hash"') do set "REMOTE_HASH=%%H"
-        
-        if not "!LOCAL_HASH!"=="!REMOTE_HASH!" (
-            cls
-            echo.
-            echo ==========================================================
-            echo   MISE A JOUR DISPONIBLE
-            echo ==========================================================
-            echo.
-            echo   Une nouvelle version d'AdminLauncher est disponible.
-            echo   Installation en cours...
-            echo.
-            echo ==========================================================
-            echo.
-            
-            :: Check admin rights for update
-            net session >nul 2>&1
-            if !errorLevel! neq 0 (
-                echo [!] Droits administrateur requis pour la mise a jour.
-                echo     Tentative d'elevation...
-                echo.
-                
-                :: Create temp update script that will replace the file
-                set "UPDATE_SCRIPT=%TEMP%\NoWin_Update.bat"
-                echo @echo off > "!UPDATE_SCRIPT!"
-                echo timeout /t 2 /nobreak ^>nul >> "!UPDATE_SCRIPT!"
-                echo copy /y "%TEMP_UPDATE%" "%INSTALLED_PATH%" ^>nul 2^>^&1 >> "!UPDATE_SCRIPT!"
-                echo if %%errorLevel%% equ 0 ( >> "!UPDATE_SCRIPT!"
-                echo     start "" "%INSTALLED_PATH%" --no-update >> "!UPDATE_SCRIPT!"
-                echo ^) >> "!UPDATE_SCRIPT!"
-                echo del /f /q "%TEMP_UPDATE%" ^>nul 2^>^&1 >> "!UPDATE_SCRIPT!"
-                echo del /f /q "%%~f0" ^>nul 2^>^&1 >> "!UPDATE_SCRIPT!"
-                
-                powershell -NoProfile -Command "Start-Process -FilePath '!UPDATE_SCRIPT!' -Verb RunAs" >nul 2>&1
-                exit /b
-            ) else (
-                :: Admin rights available - update directly
-                timeout /t 1 /nobreak >nul
-                copy /y "%TEMP_UPDATE%" "%INSTALLED_PATH%" >nul 2>&1
-                
-                if !errorLevel! equ 0 (
-                    echo [OK] Mise a jour installee avec succes.
-                    echo.
-                    
-                    :: Update icon if available
-                    powershell -NoProfile -WindowStyle Hidden -Command "try { Invoke-WebRequest -UseBasicParsing -Uri 'https://raw.githubusercontent.com/LightZirconite/NoWin/main/logo.ico' -OutFile '%INSTALL_DIR%\logo.ico' -TimeoutSec 2 -ErrorAction Stop } catch {}" >nul 2>&1
-                    
-                    del /f /q "%TEMP_UPDATE%" >nul 2>&1
-                    
-                    echo Redemarrage...
-                    timeout /t 2 /nobreak >nul
-                    start "" "%INSTALLED_PATH%" --no-update
-                    exit /b
-                ) else (
-                    echo [ERREUR] Impossible de mettre a jour le fichier.
-                    echo           Continuez avec la version actuelle.
-                    echo.
-                    pause
-                )
-            )
-        )
-        del /f /q "%TEMP_UPDATE%" >nul 2>&1
-    )
-) else (
-    echo [!] Impossible de verifier les mises a jour (pas de connexion).
-    timeout /t 2 /nobreak >nul
-)
+:: Auto-update supprime : passage direct au flux principal
+goto :SKIP_UPDATE_CHECK
 
 :SKIP_UPDATE_CHECK
 
@@ -180,12 +93,12 @@ if "%INSTALL_ONLY%"=="0" (
 
 :: Check for admin rights (needed for Program Files)
 net session >nul 2>&1
-if %errorLevel% neq 0 (
+if !errorLevel! neq 0 (
     if "%INSTALL_ONLY%"=="1" (
         :: Silent mode - try elevation once, fail silently if impossible
         echo [!] Droits administrateur requis pour l'installation.
         powershell -NoProfile -WindowStyle Hidden -Command "Start-Process -FilePath '%~f0' -ArgumentList '--install' -Verb RunAs -Wait" >nul 2>&1
-        exit /b %errorLevel%
+        exit /b !errorLevel!
     ) else (
         echo [!] Droits administrateur requis pour l'installation.
         echo     Tentative d'elevation...
@@ -337,7 +250,7 @@ echo.
 runas /user:Administrator "%APP%"
 
 echo.
-if %errorLevel% neq 0 (
+if !errorLevel! neq 0 (
     echo [ERREUR] Impossible de lancer %APPNAME%
     echo.
 ) else (
@@ -371,7 +284,7 @@ if /i "%APP%"=="cmd.exe" (
     runas /user:Administrator "powershell.exe -NoExit -Command \"$Host.UI.RawUI.WindowTitle='PowerShell Admin - NoWin'\""
 )
 
-if %errorLevel% neq 0 (
+if !errorLevel! neq 0 (
     echo.
     echo ERREUR: Mot de passe incorrect ou compte desactive.
     echo.
@@ -411,7 +324,7 @@ echo.
 
 runas /user:Administrator "%CUSTOM_APP%"
 
-if %errorLevel% neq 0 (
+if !errorLevel! neq 0 (
     echo.
     echo ERREUR: Impossible de lancer l'application.
     echo Verifiez le chemin et le mot de passe.
@@ -438,7 +351,7 @@ echo.
 runas /user:Administrator "explorer.exe ms-settings:"
 
 echo.
-if %errorLevel% neq 0 (
+if !errorLevel! neq 0 (
     echo [ERREUR] Impossible de lancer les Parametres
     echo.
 ) else (
@@ -478,7 +391,7 @@ if not exist "%UNOWHY_PATH%" (
 runas /user:Administrator "\"%UNOWHY_PATH%\""
 
 echo.
-if %errorLevel% neq 0 (
+if !errorLevel! neq 0 (
     echo [ERREUR] Impossible de lancer Unowhy Tools
     echo.
 ) else (
@@ -519,7 +432,7 @@ set "PS_CMD=$p=\"$env:USERPROFILE\Downloads\NoWin\"; New-Item -ItemType Director
 runas /user:Administrator "powershell.exe -NoExit -Command \"%PS_CMD%\""
 
 echo.
-if %errorLevel% neq 0 (
+if !errorLevel! neq 0 (
     echo [ERREUR] Acces refuse ou mot de passe incorrect
     echo.
 ) else (
@@ -558,7 +471,7 @@ set "PS_CMD=$p=\"$env:USERPROFILE\Downloads\NoWin\"; New-Item -ItemType Director
 runas /user:Administrator "powershell.exe -NoExit -Command \"%PS_CMD%\""
 
 echo.
-if %errorLevel% neq 0 (
+if !errorLevel! neq 0 (
     echo [ERREUR] Acces refuse ou mot de passe incorrect
     echo.
 ) else (
@@ -599,7 +512,7 @@ set "PS_CMD=$p=\"$env:USERPROFILE\Downloads\NoWin\"; New-Item -ItemType Director
 runas /user:Administrator "powershell.exe -NoExit -Command \"%PS_CMD%\""
 
 echo.
-if %errorLevel% neq 0 (
+if !errorLevel! neq 0 (
     echo [ERREUR] Acces refuse ou mot de passe incorrect
     echo.
 ) else (
@@ -640,7 +553,7 @@ set "PS_CMD=$p=\"$env:USERPROFILE\Downloads\NoWin\"; New-Item -ItemType Director
 runas /user:Administrator "powershell.exe -NoExit -Command \"%PS_CMD%\""
 
 echo.
-if %errorLevel% neq 0 (
+if !errorLevel! neq 0 (
     echo [ERREUR] Acces refuse ou mot de passe incorrect
     echo.
 ) else (
@@ -681,7 +594,7 @@ set "PS_CMD=$p=\"$env:USERPROFILE\Downloads\NoWin\"; New-Item -ItemType Director
 runas /user:Administrator "powershell.exe -NoExit -Command \"%PS_CMD%\""
 
 echo.
-if %errorLevel% neq 0 (
+if !errorLevel! neq 0 (
     echo [ERREUR] Acces refuse ou mot de passe incorrect
     echo.
 ) else (
@@ -720,7 +633,7 @@ set "PS_CMD=$p=\"$env:USERPROFILE\Downloads\NoWin\"; New-Item -ItemType Director
 runas /user:Administrator "powershell.exe -NoExit -Command \"%PS_CMD%\""
 
 echo.
-if %errorLevel% neq 0 (
+if !errorLevel! neq 0 (
     echo [ERREUR] Acces refuse ou mot de passe incorrect
     echo.
 ) else (
@@ -751,7 +664,7 @@ if /i not "%CONFIRM%"=="O" goto :MENU
 
 :: Need admin for Program Files
 net session >nul 2>&1
-if %errorLevel% neq 0 (
+if !errorLevel! neq 0 (
     echo.
     echo [!] Droits administrateur requis.
     echo.

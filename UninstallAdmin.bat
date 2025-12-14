@@ -1,5 +1,6 @@
 @echo off
 chcp 65001 >nul 2>&1
+setlocal EnableDelayedExpansion
 title Désinstallation NoWin - AdminLauncher
 
 :: =============================================
@@ -22,7 +23,7 @@ echo.
 
 :: Check for admin rights
 net session >nul 2>&1
-if %errorLevel% neq 0 (
+if !errorLevel! neq 0 (
     echo [!] Droits administrateur requis.
     echo     Tentative d'elevation...
     echo.
@@ -33,7 +34,13 @@ if %errorLevel% neq 0 (
 set "INSTALL_DIR=C:\Program Files\NoWin"
 set "SHORTCUT_PATH=C:\Users\Public\Desktop\Lanceur Admin.lnk"
 
-echo [1/4] Reprise du controle du dossier...
+echo [1/4] Fermeture des processus en cours...
+taskkill /F /FI "WINDOWTITLE eq Lanceur Administrateur - NoWin*" >nul 2>&1
+taskkill /F /FI "IMAGENAME eq cmd.exe" /FI "WINDOWTITLE eq Administrateur*" >nul 2>&1
+timeout /t 1 /nobreak >nul
+echo    * OK
+
+echo [2/4] Reprise du controle du dossier...
 if exist "%INSTALL_DIR%" (
     takeown /f "%INSTALL_DIR%" /r /d y >nul 2>&1
     icacls "%INSTALL_DIR%" /grant Administrators:F /t >nul 2>&1
@@ -43,7 +50,7 @@ if exist "%INSTALL_DIR%" (
     echo    * Dossier inexistant
 )
 
-echo [2/4] Suppression du dossier NoWin...
+echo [3/4] Suppression du dossier NoWin...
 if exist "%INSTALL_DIR%" (
     rmdir /s /q "%INSTALL_DIR%" >nul 2>&1
     if exist "%INSTALL_DIR%" (
@@ -55,7 +62,7 @@ if exist "%INSTALL_DIR%" (
     echo    * Deja supprime
 )
 
-echo [3/4] Suppression du raccourci...
+echo [4/4] Suppression du raccourci...
 if exist "%SHORTCUT_PATH%" (
     attrib -r -s "%SHORTCUT_PATH%" >nul 2>&1
     del /f /q "%SHORTCUT_PATH%" >nul 2>&1
@@ -68,7 +75,7 @@ if exist "%SHORTCUT_PATH%" (
     echo    * Deja supprime
 )
 
-echo [4/4] Nettoyage termine.
+echo [5/5] Nettoyage termine.
 echo.
 echo ==========================================================
 echo   DESINSTALLATION TERMINEE !
