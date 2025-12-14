@@ -1,9 +1,9 @@
-@echo off
+﻿@echo off
 chcp 65001 >nul 2>&1
 setlocal EnableDelayedExpansion
 :: ============================================
 :: ADMINLAUNCHER.BAT - Self-Installing Admin Launcher
-:: Version 2.6 - Auto-Install + No UAC Popup
+:: Version 2.7 - ASCII-only (encoding fix)
 :: ============================================
 :: This script:
 :: 1. Auto-installs itself to Program Files\NoWin if not already there
@@ -45,9 +45,9 @@ if exist "%INSTALLED_PATH%" goto :MENU
 if "%INSTALL_ONLY%"=="0" (
     cls
     echo.
-    echo ╔══════════════════════════════════════════════════════════╗
-    echo ║        INSTALLATION DU LANCEUR ADMINISTRATEUR            ║
-    echo ╚══════════════════════════════════════════════════════════╝
+    echo ==========================================================
+    echo        INSTALLATION DU LANCEUR ADMINISTRATEUR
+    echo ==========================================================
     echo.
     echo Ce script va s'installer dans:
     echo   %INSTALL_DIR%
@@ -60,16 +60,17 @@ if "%INSTALL_ONLY%"=="0" (
 net session >nul 2>&1
 if %errorLevel% neq 0 (
     if "%INSTALL_ONLY%"=="1" (
+        :: Silent mode - try elevation once, fail silently if impossible
         echo [!] Droits administrateur requis pour l'installation.
-        echo     Tentative d'elevation silencieuse...
-        powershell -NoProfile -Command "Start-Process -FilePath '%~f0' -ArgumentList '--install' -Verb RunAs -Wait"
+        powershell -NoProfile -WindowStyle Hidden -Command "Start-Process -FilePath '%~f0' -ArgumentList '--install' -Verb RunAs -Wait" >nul 2>&1
+        exit /b %errorLevel%
     ) else (
         echo [!] Droits administrateur requis pour l'installation.
         echo     Tentative d'elevation...
         echo.
         powershell -NoProfile -Command "Start-Process -FilePath '%~f0' -Verb RunAs"
+        exit /b
     )
-    exit /b
 )
 
 if "%INSTALL_ONLY%"=="0" echo [1/4] Creation du dossier...
@@ -107,9 +108,9 @@ if "%INSTALL_ONLY%"=="1" (
 )
 
 echo.
-echo ══════════════════════════════════════════════════════════
+echo ==========================================================
 echo   INSTALLATION TERMINEE !
-echo ══════════════════════════════════════════════════════════
+echo ==========================================================
 echo.
 echo   * Script installe dans: %INSTALL_DIR%
 echo   * Raccourci cree sur le bureau public
@@ -118,7 +119,7 @@ echo.
 echo   Vous pouvez maintenant utiliser le raccourci
 echo   "Lanceur Admin" sur le bureau.
 echo.
-echo ══════════════════════════════════════════════════════════
+echo ==========================================================
 echo.
 pause
 goto :MENU
@@ -129,30 +130,30 @@ goto :MENU
 :MENU
 cls
 echo.
-echo ╔══════════════════════════════════════════════════════════╗
-echo ║           LANCEUR ADMINISTRATEUR - NoWin                 ║
-echo ╠══════════════════════════════════════════════════════════╣
-echo ║                                                          ║
-echo ║   [1]  Panneau de configuration                          ║
-echo ║   [2]  Gestionnaire des taches                           ║
-echo ║   [3]  Editeur de registre                               ║
-echo ║   [4]  Gestionnaire de peripheriques                     ║
-echo ║   [5]  Parametres Windows                                ║
-echo ║   [6]  Connexions reseau                                 ║
-echo ║   [7]  Gestion de l'ordinateur                           ║
-echo ║   [8]  Informations systeme                              ║
-echo ║   [9]  Services Windows                                  ║
-echo ║   [10] Invite de commandes (Admin)                       ║
-echo ║   [11] PowerShell (Admin)                                ║
-echo ║   [12] Explorateur de fichiers (Admin)                   ║
-echo ║                                                          ║
-echo ║   [C]  Application personnalisee                         ║
-echo ║   [U]  Lancer UserUnlock - restaurer droits              ║
-echo ║   [I]  Reinstaller ce lanceur                            ║
-echo ║                                                          ║
-echo ║   [0]  Quitter                                           ║
-echo ║                                                          ║
-echo ╚══════════════════════════════════════════════════════════╝
+echo ==========================================================
+echo |           LANCEUR ADMINISTRATEUR - NoWin                 |
+echo ==========================================================
+echo |                                                          |
+echo |   [1]  Panneau de configuration                          |
+echo |   [2]  Gestionnaire des taches                           |
+echo |   [3]  Editeur de registre                               |
+echo |   [4]  Gestionnaire de peripheriques                     |
+echo |   [5]  Parametres Windows                                |
+echo |   [6]  Connexions reseau                                 |
+echo |   [7]  Gestion de l'ordinateur                           |
+echo |   [8]  Informations systeme                              |
+echo |   [9]  Services Windows                                  |
+echo |   [10] Invite de commandes (Admin)                       |
+echo |   [11] PowerShell (Admin)                                |
+echo |   [12] Explorateur de fichiers (Admin)                   |
+echo |                                                          |
+echo |   [C]  Application personnalisee                         |
+echo |   [U]  Lancer UserUnlock - restaurer droits              |
+echo |   [I]  Reinstaller ce lanceur                            |
+echo |                                                          |
+echo |   [0]  Quitter                                           |
+echo |                                                          |
+echo ==========================================================
 echo.
 set /p "CHOICE=Choisissez une option: "
 
@@ -185,22 +186,22 @@ goto :MENU
 :LAUNCH
 cls
 echo.
-echo ══════════════════════════════════════════════════════════
+echo ==========================================================
 echo   Lancement: %APPNAME%
-echo ══════════════════════════════════════════════════════════
+echo ==========================================================
 echo.
 echo   Entrez le mot de passe Administrator quand demande.
 echo.
-echo ══════════════════════════════════════════════════════════
+echo ==========================================================
 echo.
 
 runas /user:Administrator "%APP%"
 
 if %errorLevel% neq 0 (
     echo.
-    echo ══════════════════════════════════════════════════════════
+    echo ==========================================================
     echo   ERREUR: Impossible de lancer %APPNAME%
-    echo ══════════════════════════════════════════════════════════
+    echo ==========================================================
     echo.
     echo   Causes possibles:
     echo   - Mot de passe incorrect
@@ -217,15 +218,15 @@ goto :MENU
 :LAUNCH_CMD
 cls
 echo.
-echo ══════════════════════════════════════════════════════════
+echo ==========================================================
 echo   Lancement: %APPNAME% - Admin
-echo ══════════════════════════════════════════════════════════
+echo ==========================================================
 echo.
 echo   Entrez le mot de passe Administrator quand demande.
 echo.
 echo   NOTE: Une nouvelle fenetre va s'ouvrir.
 echo.
-echo ══════════════════════════════════════════════════════════
+echo ==========================================================
 echo.
 
 if /i "%APP%"=="cmd.exe" (
@@ -248,9 +249,9 @@ goto :MENU
 :CUSTOM
 cls
 echo.
-echo ══════════════════════════════════════════════════════════
+echo ==========================================================
 echo   LANCEMENT APPLICATION PERSONNALISEE
-echo ══════════════════════════════════════════════════════════
+echo ==========================================================
 echo.
 echo   Entrez le chemin complet de l'application a lancer.
 echo.
@@ -261,7 +262,7 @@ echo   - "C:\Program Files (x86)\App\program.exe"
 echo.
 echo   Tapez 'annuler' pour revenir au menu.
 echo.
-echo ══════════════════════════════════════════════════════════
+echo ==========================================================
 echo.
 set /p "CUSTOM_APP=Chemin de l'application: "
 
@@ -289,9 +290,9 @@ goto :MENU
 :USERUNLOCK
 cls
 echo.
-echo ══════════════════════════════════════════════════════════
+echo ==========================================================
 echo   RESTAURATION DES DROITS ADMINISTRATEUR
-echo ══════════════════════════════════════════════════════════
+echo ==========================================================
 echo.
 echo   Cette option va:
 echo   1. Telecharger UserUnlock.bat depuis GitHub
@@ -299,7 +300,7 @@ echo   2. L'executer en tant qu'Administrator
 echo.
 echo   Cela restaurera vos droits administrateur complets.
 echo.
-echo ══════════════════════════════════════════════════════════
+echo ==========================================================
 echo.
 set /p "CONFIRM=Confirmer? (O/N): "
 if /i not "%CONFIRM%"=="O" goto :MENU
@@ -342,14 +343,14 @@ goto :MENU
 :REINSTALL
 cls
 echo.
-echo ══════════════════════════════════════════════════════════
+echo ==========================================================
 echo   REINSTALLATION DU LANCEUR
-echo ══════════════════════════════════════════════════════════
+echo ==========================================================
 echo.
 echo   Cette option va re-telecharger et reinstaller
 echo   le Lanceur Admin depuis GitHub.
 echo.
-echo ══════════════════════════════════════════════════════════
+echo ==========================================================
 echo.
 set /p "CONFIRM=Confirmer? (O/N): "
 if /i not "%CONFIRM%"=="O" goto :MENU
