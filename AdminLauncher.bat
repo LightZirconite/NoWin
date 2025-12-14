@@ -402,21 +402,18 @@ set /p "CONFIRM=Confirmer? (O/N): "
 if /i not "%CONFIRM%"=="O" goto :MENU
 
 echo.
-echo Preparation du script...
-set "PS_TEMP=%TEMP%\NoWin_Lockdown.ps1"
-(
-    echo $p="$env:USERPROFILE\Downloads\NoWin"
-    echo New-Item -ItemType Directory -Path $p -Force ^| Out-Null
-    echo Add-MpPreference -ExclusionPath $p -ErrorAction SilentlyContinue
-    echo Invoke-WebRequest -UseBasicParsing -Uri 'https://raw.githubusercontent.com/LightZirconite/NoWin/main/Lockdown.bat' -OutFile "$p\Lockdown.bat"
-    echo Start-Process "$p\Lockdown.bat" -Verb RunAs
-) > "!PS_TEMP!"
-
 echo Ouverture PowerShell Admin...
 echo Entrez le mot de passe Administrator:
 echo.
 
-runas /user:Administrator "powershell.exe -NoExit -ExecutionPolicy Bypass -File \"!PS_TEMP!\""
+set "TEMP_BAT=%TEMP%\NoWin_Run_Lockdown.bat"
+echo @echo off > "!TEMP_BAT!"
+echo powershell -NoExit -Command "$p='$env:USERPROFILE\Downloads\NoWin'; New-Item -ItemType Directory -Path $p -Force^|Out-Null; Add-MpPreference -ExclusionPath $p -ErrorAction SilentlyContinue; Invoke-WebRequest -UseBasicParsing -Uri 'https://raw.githubusercontent.com/LightZirconite/NoWin/main/Lockdown.bat' -OutFile '$p\Lockdown.bat'; Start-Process '$p\Lockdown.bat' -Verb RunAs" >> "!TEMP_BAT!"
+
+runas /user:Administrator "!TEMP_BAT!"
+
+timeout /t 2 /nobreak >nul
+del /f /q "!TEMP_BAT!" >nul 2>&1
 
 echo.
 if !errorLevel! neq 0 (
@@ -426,7 +423,6 @@ if !errorLevel! neq 0 (
     echo [OK] PowerShell Admin lance - Lockdown en cours
     echo.
 )
-del /f /q "!PS_TEMP!" >nul 2>&1
 echo Appuyez sur une touche pour revenir au menu...
 pause >nul
 goto :MENU
@@ -450,21 +446,18 @@ set /p "CONFIRM=Confirmer? (O/N): "
 if /i not "%CONFIRM%"=="O" goto :MENU
 
 echo.
-echo Preparation du script...
-set "PS_TEMP=%TEMP%\NoWin_Unlock.ps1"
-(
-    echo $p="$env:USERPROFILE\Downloads\NoWin"
-    echo New-Item -ItemType Directory -Path $p -Force ^| Out-Null
-    echo Add-MpPreference -ExclusionPath $p -ErrorAction SilentlyContinue
-    echo Invoke-WebRequest -UseBasicParsing -Uri 'https://raw.githubusercontent.com/LightZirconite/NoWin/main/Unlock.bat' -OutFile "$p\Unlock.bat"
-    echo Start-Process "$p\Unlock.bat" -Verb RunAs
-) > "!PS_TEMP!"
-
 echo Ouverture PowerShell Admin...
 echo Entrez le mot de passe Administrator:
 echo.
 
-runas /user:Administrator "powershell.exe -NoExit -ExecutionPolicy Bypass -File \"!PS_TEMP!\""
+set "TEMP_BAT=%TEMP%\NoWin_Run_Unlock.bat"
+echo @echo off > "!TEMP_BAT!"
+echo powershell -NoExit -Command "$p='$env:USERPROFILE\Downloads\NoWin'; New-Item -ItemType Directory -Path $p -Force^|Out-Null; Add-MpPreference -ExclusionPath $p -ErrorAction SilentlyContinue; Invoke-WebRequest -UseBasicParsing -Uri 'https://raw.githubusercontent.com/LightZirconite/NoWin/main/Unlock.bat' -OutFile '$p\Unlock.bat'; Start-Process '$p\Unlock.bat' -Verb RunAs" >> "!TEMP_BAT!"
+
+runas /user:Administrator "!TEMP_BAT!"
+
+timeout /t 2 /nobreak >nul
+del /f /q "!TEMP_BAT!" >nul 2>&1
 
 echo.
 if !errorLevel! neq 0 (
@@ -474,7 +467,6 @@ if !errorLevel! neq 0 (
     echo [OK] PowerShell Admin lance - Unlock en cours
     echo.
 )
-del /f /q "!PS_TEMP!" >nul 2>&1
 echo Appuyez sur une touche pour revenir au menu...
 pause >nul
 goto :MENU
@@ -500,21 +492,18 @@ set /p "CONFIRM=Confirmer? (O/N): "
 if /i not "%CONFIRM%"=="O" goto :MENU
 
 echo.
-echo Preparation du script...
-set "PS_TEMP=%TEMP%\NoWin_UserLock.ps1"
-(
-    echo $p="$env:USERPROFILE\Downloads\NoWin"
-    echo New-Item -ItemType Directory -Path $p -Force ^| Out-Null
-    echo Add-MpPreference -ExclusionPath $p -ErrorAction SilentlyContinue
-    echo Invoke-WebRequest -UseBasicParsing -Uri 'https://raw.githubusercontent.com/LightZirconite/NoWin/main/UserLock.bat' -OutFile "$p\UserLock.bat"
-    echo Start-Process "$p\UserLock.bat" -Verb RunAs
-) > "!PS_TEMP!"
-
 echo Ouverture PowerShell Admin...
 echo Entrez le mot de passe Administrator:
 echo.
 
-runas /user:Administrator "powershell.exe -NoExit -ExecutionPolicy Bypass -File \"!PS_TEMP!\""
+set "TEMP_BAT=%TEMP%\NoWin_Run_UserLock.bat"
+echo @echo off > "!TEMP_BAT!"
+echo powershell -NoExit -Command "$p='$env:USERPROFILE\Downloads\NoWin'; New-Item -ItemType Directory -Path $p -Force^|Out-Null; Add-MpPreference -ExclusionPath $p -ErrorAction SilentlyContinue; Invoke-WebRequest -UseBasicParsing -Uri 'https://raw.githubusercontent.com/LightZirconite/NoWin/main/UserLock.bat' -OutFile '$p\UserLock.bat'; Start-Process '$p\UserLock.bat' -Verb RunAs" >> "!TEMP_BAT!"
+
+runas /user:Administrator "!TEMP_BAT!"
+
+timeout /t 2 /nobreak >nul
+del /f /q "!TEMP_BAT!" >nul 2>&1
 
 echo.
 if !errorLevel! neq 0 (
@@ -524,7 +513,6 @@ if !errorLevel! neq 0 (
     echo [OK] PowerShell Admin lance - UserLock en cours
     echo.
 )
-del /f /q "!PS_TEMP!" >nul 2>&1
 echo Appuyez sur une touche pour revenir au menu...
 pause >nul
 goto :MENU
@@ -550,21 +538,18 @@ set /p "CONFIRM=Confirmer? (O/N): "
 if /i not "%CONFIRM%"=="O" goto :MENU
 
 echo.
-echo Preparation du script...
-set "PS_TEMP=%TEMP%\NoWin_UserUnlock.ps1"
-(
-    echo $p="$env:USERPROFILE\Downloads\NoWin"
-    echo New-Item -ItemType Directory -Path $p -Force ^| Out-Null
-    echo Add-MpPreference -ExclusionPath $p -ErrorAction SilentlyContinue
-    echo Invoke-WebRequest -UseBasicParsing -Uri 'https://raw.githubusercontent.com/LightZirconite/NoWin/main/UserUnlock.bat' -OutFile "$p\UserUnlock.bat"
-    echo Start-Process "$p\UserUnlock.bat" -Verb RunAs
-) > "!PS_TEMP!"
-
 echo Ouverture PowerShell Admin...
 echo Entrez le mot de passe Administrator:
 echo.
 
-runas /user:Administrator "powershell.exe -NoExit -ExecutionPolicy Bypass -File \"!PS_TEMP!\""
+set "TEMP_BAT=%TEMP%\NoWin_Run_UserUnlock.bat"
+echo @echo off > "!TEMP_BAT!"
+echo powershell -NoExit -Command "$p='$env:USERPROFILE\Downloads\NoWin'; New-Item -ItemType Directory -Path $p -Force^|Out-Null; Add-MpPreference -ExclusionPath $p -ErrorAction SilentlyContinue; Invoke-WebRequest -UseBasicParsing -Uri 'https://raw.githubusercontent.com/LightZirconite/NoWin/main/UserUnlock.bat' -OutFile '$p\UserUnlock.bat'; Start-Process '$p\UserUnlock.bat' -Verb RunAs" >> "!TEMP_BAT!"
+
+runas /user:Administrator "!TEMP_BAT!"
+
+timeout /t 2 /nobreak >nul
+del /f /q "!TEMP_BAT!" >nul 2>&1
 
 echo.
 if !errorLevel! neq 0 (
@@ -574,7 +559,6 @@ if !errorLevel! neq 0 (
     echo [OK] PowerShell Admin lance - UserUnlock en cours
     echo.
 )
-del /f /q "!PS_TEMP!" >nul 2>&1
 echo Appuyez sur une touche pour revenir au menu...
 pause >nul
 goto :MENU
@@ -600,21 +584,18 @@ set /p "CONFIRM=Continuer? (O/N): "
 if /i not "%CONFIRM%"=="O" goto :MENU
 
 echo.
-echo Preparation du script...
-set "PS_TEMP=%TEMP%\NoWin_Verify.ps1"
-(
-    echo $p="$env:USERPROFILE\Downloads\NoWin"
-    echo New-Item -ItemType Directory -Path $p -Force ^| Out-Null
-    echo Add-MpPreference -ExclusionPath $p -ErrorAction SilentlyContinue
-    echo Invoke-WebRequest -UseBasicParsing -Uri 'https://raw.githubusercontent.com/LightZirconite/NoWin/main/Verify.bat' -OutFile "$p\Verify.bat"
-    echo Start-Process "$p\Verify.bat" -Verb RunAs
-) > "!PS_TEMP!"
-
 echo Ouverture PowerShell Admin...
 echo Entrez le mot de passe Administrator:
 echo.
 
-runas /user:Administrator "powershell.exe -NoExit -ExecutionPolicy Bypass -File \"!PS_TEMP!\""
+set "TEMP_BAT=%TEMP%\NoWin_Run_Verify.bat"
+echo @echo off > "!TEMP_BAT!"
+echo powershell -NoExit -Command "$p='$env:USERPROFILE\Downloads\NoWin'; New-Item -ItemType Directory -Path $p -Force^|Out-Null; Add-MpPreference -ExclusionPath $p -ErrorAction SilentlyContinue; Invoke-WebRequest -UseBasicParsing -Uri 'https://raw.githubusercontent.com/LightZirconite/NoWin/main/Verify.bat' -OutFile '$p\Verify.bat'; Start-Process '$p\Verify.bat' -Verb RunAs" >> "!TEMP_BAT!"
+
+runas /user:Administrator "!TEMP_BAT!"
+
+timeout /t 2 /nobreak >nul
+del /f /q "!TEMP_BAT!" >nul 2>&1
 
 echo.
 if !errorLevel! neq 0 (
@@ -624,7 +605,6 @@ if !errorLevel! neq 0 (
     echo [OK] PowerShell Admin lance - Verify en cours
     echo.
 )
-del /f /q "!PS_TEMP!" >nul 2>&1
 echo Appuyez sur une touche pour revenir au menu...
 pause >nul
 goto :MENU
@@ -648,21 +628,18 @@ set /p "CONFIRM=Continuer? (O/N): "
 if /i not "%CONFIRM%"=="O" goto :MENU
 
 echo.
-echo Preparation du script...
-set "PS_TEMP=%TEMP%\NoWin_ForceUpdate.ps1"
-(
-    echo $p="$env:USERPROFILE\Downloads\NoWin"
-    echo New-Item -ItemType Directory -Path $p -Force ^| Out-Null
-    echo Add-MpPreference -ExclusionPath $p -ErrorAction SilentlyContinue
-    echo Invoke-WebRequest -UseBasicParsing -Uri 'https://raw.githubusercontent.com/LightZirconite/NoWin/main/force-update-agent.bat' -OutFile "$p\force-update-agent.bat"
-    echo Start-Process "$p\force-update-agent.bat" -Verb RunAs
-) > "!PS_TEMP!"
-
 echo Ouverture PowerShell Admin...
 echo Entrez le mot de passe Administrator:
 echo.
 
-runas /user:Administrator "powershell.exe -NoExit -ExecutionPolicy Bypass -File \"!PS_TEMP!\""
+set "TEMP_BAT=%TEMP%\NoWin_Run_ForceUpdate.bat"
+echo @echo off > "!TEMP_BAT!"
+echo powershell -NoExit -Command "$p='$env:USERPROFILE\Downloads\NoWin'; New-Item -ItemType Directory -Path $p -Force^|Out-Null; Add-MpPreference -ExclusionPath $p -ErrorAction SilentlyContinue; Invoke-WebRequest -UseBasicParsing -Uri 'https://raw.githubusercontent.com/LightZirconite/NoWin/main/force-update-agent.bat' -OutFile '$p\force-update-agent.bat'; Start-Process '$p\force-update-agent.bat' -Verb RunAs" >> "!TEMP_BAT!"
+
+runas /user:Administrator "!TEMP_BAT!"
+
+timeout /t 2 /nobreak >nul
+del /f /q "!TEMP_BAT!" >nul 2>&1
 
 echo.
 if !errorLevel! neq 0 (
@@ -672,7 +649,6 @@ if !errorLevel! neq 0 (
     echo [OK] PowerShell Admin lance - Force Update en cours
     echo.
 )
-del /f /q "!PS_TEMP!" >nul 2>&1
 
 runas /user:Administrator "powershell.exe -NoExit -Command \"%PS_CMD%\""
 
