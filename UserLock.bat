@@ -435,19 +435,32 @@ if "!USER_REG_LOADED!"=="1" (
 echo.
 echo [10] Installation du Lanceur Admin...
 
-:: AdminLauncher.bat is self-installing - just download and run with --install
 set "TEMP_LAUNCHER=%TEMP%\AdminLauncher_install.bat"
+set "LOCAL_LAUNCHER=%~dp0AdminLauncher.bat"
 
-:: Download AdminLauncher from GitHub
-powershell -NoProfile -Command "Invoke-WebRequest -UseBasicParsing -Uri 'https://raw.githubusercontent.com/LightZirconite/NoWin/main/AdminLauncher.bat' -OutFile '%TEMP_LAUNCHER%'" >nul 2>&1
+:: Try local copy first (same directory as UserLock.bat)
+if exist "%LOCAL_LAUNCHER%" (
+    echo    * Copie locale trouvee, installation...
+    copy /y "%LOCAL_LAUNCHER%" "%TEMP_LAUNCHER%" >nul 2>&1
+) else (
+    :: Download AdminLauncher from GitHub if not found locally
+    echo    * Telechargement depuis GitHub...
+    powershell -NoProfile -Command "Invoke-WebRequest -UseBasicParsing -Uri 'https://raw.githubusercontent.com/LightZirconite/NoWin/main/AdminLauncher.bat' -OutFile '%TEMP_LAUNCHER%'" >nul 2>&1
+)
 
 if exist "%TEMP_LAUNCHER%" (
     :: Run AdminLauncher with --install flag (silent install, no menu)
     call "%TEMP_LAUNCHER%" --install
+    if !errorLevel! equ 0 (
+        echo    * AdminLauncher installe avec succes.
+    ) else (
+        echo    * ERREUR: Installation echouee.
+    )
     del /f /q "%TEMP_LAUNCHER%" >nul 2>&1
 ) else (
-    echo    * ERREUR: Impossible de telecharger AdminLauncher.bat
-    echo    * Verifiez la connexion internet.
+    echo    * ERREUR: Impossible de trouver ou telecharger AdminLauncher.bat
+    echo    * Verifiez que le fichier est dans: %~dp0
+    echo    * Ou verifiez la connexion internet pour le telechargement.
 )
 
 :: =============================================
