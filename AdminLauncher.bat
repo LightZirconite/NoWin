@@ -227,7 +227,6 @@ goto :MENU
 :: MAIN MENU
 :: =============================================
 :MENU
-if not defined SPLASH_DONE call :SHOW_SPLASH_ONCE
 cls
 echo.
 echo ==========================================================
