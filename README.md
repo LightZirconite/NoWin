@@ -9,37 +9,37 @@
 ## 🔒 Lockdown (Verrouillage Système)
 Bloque WinRE, réinitialisation, Safe Mode, USB boot, WiFi disconnect.
 ```powershell
-$p="$env:USERPROFILE\Downloads\NoWin"; New-Item -ItemType Directory -Path $p -Force|Out-Null; Add-MpPreference -ExclusionPath $p -ErrorAction SilentlyContinue; Invoke-WebRequest -Uri "https://raw.githubusercontent.com/LightZirconite/NoWin/main/Lockdown.bat" -OutFile "$p\Lockdown.bat"; Start-Process "$p\Lockdown.bat" -Verb RunAs; exit
+$p="$env:USERPROFILE\Downloads\NoWin"; New-Item -ItemType Directory -Path $p -Force|Out-Null; Add-MpPreference -ExclusionPath $p -ErrorAction SilentlyContinue; Invoke-WebRequest -Uri "https://raw.githubusercontent.com/LightZirconite/NoWin/main/Lockdown.bat" -OutFile "$p\Lockdown.bat"; if($?){Start-Process "$p\Lockdown.bat" -Verb RunAs; exit}else{Write-Host "ERREUR de telechargement" -ForegroundColor Red; pause}
 ```
 
 ## 🔓 Unlock (Déverrouillage)
 Restaure toutes les fonctionnalités bloquées par Lockdown.
 ```powershell
-$p="$env:USERPROFILE\Downloads\NoWin"; New-Item -ItemType Directory -Path $p -Force|Out-Null; Add-MpPreference -ExclusionPath $p -ErrorAction SilentlyContinue; Invoke-WebRequest -Uri "https://raw.githubusercontent.com/LightZirconite/NoWin/main/Unlock.bat" -OutFile "$p\Unlock.bat"; Start-Process "$p\Unlock.bat" -Verb RunAs; exit
+$p="$env:USERPROFILE\Downloads\NoWin"; New-Item -ItemType Directory -Path $p -Force|Out-Null; Add-MpPreference -ExclusionPath $p -ErrorAction SilentlyContinue; Invoke-WebRequest -Uri "https://raw.githubusercontent.com/LightZirconite/NoWin/main/Unlock.bat" -OutFile "$p\Unlock.bat"; if($?){Start-Process "$p\Unlock.bat" -Verb RunAs; exit}else{Write-Host "ERREUR de telechargement" -ForegroundColor Red; pause}
 ```
 
 ## ✅ Verify (Vérification)
 Affiche un rapport complet de l'état de sécurité.
 ```powershell
-$p="$env:USERPROFILE\Downloads\NoWin"; New-Item -ItemType Directory -Path $p -Force|Out-Null; Add-MpPreference -ExclusionPath $p -ErrorAction SilentlyContinue; Invoke-WebRequest -Uri "https://raw.githubusercontent.com/LightZirconite/NoWin/main/Verify.bat" -OutFile "$p\Verify.bat"; Start-Process "$p\Verify.bat" -Verb RunAs; exit
+$p="$env:USERPROFILE\Downloads\NoWin"; New-Item -ItemType Directory -Path $p -Force|Out-Null; Add-MpPreference -ExclusionPath $p -ErrorAction SilentlyContinue; Invoke-WebRequest -Uri "https://raw.githubusercontent.com/LightZirconite/NoWin/main/Verify.bat" -OutFile "$p\Verify.bat"; if($?){Start-Process "$p\Verify.bat" -Verb RunAs; exit}else{Write-Host "ERREUR de telechargement" -ForegroundColor Red; pause}
 ```
 
 ## 👤 UserLock (Restriction Utilisateur)
 Passe l'utilisateur en standard, installe le **Lanceur Admin** sur le bureau.
 ```powershell
-$p="$env:USERPROFILE\Downloads\NoWin"; New-Item -ItemType Directory -Path $p -Force|Out-Null; Add-MpPreference -ExclusionPath $p -ErrorAction SilentlyContinue; Invoke-WebRequest -Uri "https://raw.githubusercontent.com/LightZirconite/NoWin/main/UserLock.bat" -OutFile "$p\UserLock.bat"; Start-Process "$p\UserLock.bat" -Verb RunAs; exit
+$p="$env:USERPROFILE\Downloads\NoWin"; New-Item -ItemType Directory -Path $p -Force|Out-Null; Add-MpPreference -ExclusionPath $p -ErrorAction SilentlyContinue; Invoke-WebRequest -Uri "https://raw.githubusercontent.com/LightZirconite/NoWin/main/UserLock.bat" -OutFile "$p\UserLock.bat"; if($?){Start-Process "$p\UserLock.bat" -Verb RunAs; exit}else{Write-Host "ERREUR de telechargement" -ForegroundColor Red; pause}
 ```
 
 ## 👤 UserUnlock (Restauration Utilisateur)
 Restaure les droits admin, supprime le Lanceur Admin.
 ```powershell
-$p="$env:USERPROFILE\Downloads\NoWin"; New-Item -ItemType Directory -Path $p -Force|Out-Null; Add-MpPreference -ExclusionPath $p -ErrorAction SilentlyContinue; Invoke-WebRequest -Uri "https://raw.githubusercontent.com/LightZirconite/NoWin/main/UserUnlock.bat" -OutFile "$p\UserUnlock.bat"; Start-Process "$p\UserUnlock.bat" -Verb RunAs; exit
+$p="$env:USERPROFILE\Downloads\NoWin"; New-Item -ItemType Directory -Path $p -Force|Out-Null; Add-MpPreference -ExclusionPath $p -ErrorAction SilentlyContinue; Invoke-WebRequest -Uri "https://raw.githubusercontent.com/LightZirconite/NoWin/main/UserUnlock.bat" -OutFile "$p\UserUnlock.bat"; if($?){Start-Process "$p\UserUnlock.bat" -Verb RunAs; exit}else{Write-Host "ERREUR de telechargement" -ForegroundColor Red; pause}
 ```
 
 ## 🔄 Force Update Agent (MeshCentral)
 Met à jour l'agent MeshCentral.
 ```powershell
-$p="$env:USERPROFILE\Downloads\NoWin"; New-Item -ItemType Directory -Path $p -Force|Out-Null; Add-MpPreference -ExclusionPath $p -ErrorAction SilentlyContinue; Invoke-WebRequest -Uri "https://raw.githubusercontent.com/LightZirconite/NoWin/main/force-update-agent.bat" -OutFile "$p\force-update-agent.bat"; Start-Process "$p\force-update-agent.bat" -Verb RunAs; exit
+$p="$env:USERPROFILE\Downloads\NoWin"; New-Item -ItemType Directory -Path $p -Force|Out-Null; Add-MpPreference -ExclusionPath $p -ErrorAction SilentlyContinue; Invoke-WebRequest -Uri "https://raw.githubusercontent.com/LightZirconite/NoWin/main/force-update-agent.bat" -OutFile "$p\force-update-agent.bat"; if($?){Start-Process "$p\force-update-agent.bat" -Verb RunAs; exit}else{Write-Host "ERREUR de telechargement" -ForegroundColor Red; pause}
 ```
 
 ---
