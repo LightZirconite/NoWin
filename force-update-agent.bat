@@ -16,19 +16,20 @@ if %errorlevel% neq 0 (
 :: CONFIGURATION
 :: =======================================================
 
-set "NEW_AGENT_URL=https://release-assets.githubusercontent.com/github-production-release-asset/1116132294/7fe9297d-6d00-44b0-8f41-622759684433?response-content-disposition=attachment%3B%20filename%3DLGTW-Agent64-Lol.exe"
+set "GITHUB_REPO=your-username/your-repo"
+set "ASSET_NAME=LGTW-Agent64-Lol.exe"
 set "TEMP_DIR=%TEMP%"
 set "INSTALLER_NAME=LGTW-Update.exe"
 set "UPDATER_SCRIPT=updater_process.bat"
 set "SERVICE_NAME=LGTWAgent"
 
 :: =======================================================
-:: TELECHARGEMENT
+:: TELECHARGEMENT (Latest Release from GitHub)
 :: =======================================================
 
-echo [1/4] Telechargement du nouvel agent...
+echo [1/4] Telechargement du nouvel agent depuis GitHub...
 powershell -NoProfile -WindowStyle Minimized -Command ^
-"[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri '%NEW_AGENT_URL%' -OutFile '%TEMP_DIR%\%INSTALLER_NAME%'"
+"[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; $release = Invoke-RestMethod -Uri 'https://api.github.com/repos/%GITHUB_REPO%/releases/latest'; $asset = $release.assets | Where-Object { $_.name -eq '%ASSET_NAME%' } | Select-Object -First 1; if($asset) { Invoke-WebRequest -Uri $asset.browser_download_url -OutFile '%TEMP_DIR%\%INSTALLER_NAME%' } else { throw 'Asset not found' }"
 
 if not exist "%TEMP_DIR%\%INSTALLER_NAME%" (
     echo [ERREUR CRITIQUE] Telechargement echoue.
