@@ -1,17 +1,23 @@
 @echo off
+chcp 65001 >nul 2>&1
+setlocal EnableDelayedExpansion
 :: ============================================
 :: UNLOCK.BAT - Complete System Recovery Restore
-:: Version 2.0 - Matches Lockdown v2.0
+:: Version 2.2 - Matches Lockdown v2.2
 :: ============================================
 :: Check for Administrator privileges
 net session >nul 2>&1
 if %errorLevel% neq 0 (
-    powershell -Command "Start-Process '%~f0' -Verb RunAs"
+    powershell -NoProfile -Command "Start-Process -FilePath '%~f0' -Verb RunAs" 2>nul
+    if !errorLevel! neq 0 (
+        echo ERROR: Administrator privileges required.
+        pause
+    )
     exit /b
 )
 
 echo ==========================================
-echo     SYSTEM UNLOCK v2.0
+echo     SYSTEM UNLOCK v2.2
 echo ==========================================
 echo.
 
@@ -251,16 +257,56 @@ powercfg /setactive SCHEME_CURRENT >nul 2>&1
 echo    * Sleep/Hibernation restored.
 
 :: =============================================
-:: SECTION 12: RESTART EXPLORER
+:: SECTION 12: RESTORE WIFI ACCESS
 :: =============================================
 echo.
-echo [12] Restarting Explorer to apply changes...
+echo [12] Restoring WiFi Access...
+
+:: 12.1 Restore Network Connections folder access
+reg delete "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" /v NoNetworkConnections /f >nul 2>&1
+echo    * Network Connections folder restored.
+
+:: 12.2 Show Network icon in system tray
+reg delete "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer" /v HideSCANetwork /f >nul 2>&1
+echo    * Network tray icon restored.
+
+:: 12.3 Re-enable WiFi toggle
+reg delete "HKLM\SOFTWARE\Policies\Microsoft\Windows\Network Connections" /v NC_ShowSharedAccessUI /f >nul 2>&1
+
+:: 12.4 Unblock netsh.exe
+reg delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\netsh.exe" /f >nul 2>&1
+echo    * netsh.exe unblocked.
+
+:: 12.5 Re-enable TCP/IP configuration
+reg delete "HKLM\SOFTWARE\Policies\Microsoft\Windows\Network Connections" /v NC_AllowAdvancedTCPIPConfig /f >nul 2>&1
+
+:: 12.6 Restore settings pages visibility
+reg delete "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" /v SettingsPageVisibility /f >nul 2>&1
+echo    * Settings pages restored.
+
+:: 12.7 Re-enable Airplane Mode
+reg delete "HKLM\SOFTWARE\Microsoft\PolicyManager\current\device\Connectivity" /v AllowAirplaneMode /f >nul 2>&1
+reg delete "HKLM\SOFTWARE\Policies\Microsoft\Windows\Connectivity" /v AllowAirplaneMode /f >nul 2>&1
+echo    * Airplane Mode re-enabled.
+
+:: 12.8 Re-enable network adapter changes
+reg delete "HKLM\SOFTWARE\Policies\Microsoft\Windows\Network Connections" /v NC_LanChangeProperties /f >nul 2>&1
+reg delete "HKLM\SOFTWARE\Policies\Microsoft\Windows\Network Connections" /v NC_EnableAdminProhibits /f >nul 2>&1
+echo    * Network adapter settings restored.
+
+echo    * WiFi access fully restored.
+
+:: =============================================
+:: SECTION 13: RESTART EXPLORER
+:: =============================================
+echo.
+echo [13] Restarting Explorer to apply changes...
 taskkill /F /IM explorer.exe >nul 2>&1
 start explorer.exe
 
 echo.
 echo ==========================================
-echo       UNLOCK COMPLETE (v2.1)
+echo       UNLOCK COMPLETE (v2.2)
 echo ==========================================
 echo.
 echo Restored features:
@@ -273,6 +319,7 @@ echo  [+] System Restore / Shadow Copies
 echo  [+] Recovery Command Prompt
 echo  [+] DISM / SFC tools
 echo  [+] Sleep / Hibernation
+echo  [+] WiFi Access (full control)
 echo.
 echo NOTE: A reboot is recommended to fully apply changes.
 echo.

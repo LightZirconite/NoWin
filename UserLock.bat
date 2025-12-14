@@ -1,4 +1,6 @@
 @echo off
+chcp 65001 >nul 2>&1
+setlocal EnableDelayedExpansion
 :: ============================================
 :: USERLOCK.BAT - Advanced User Privilege Lockdown
 :: Version 2.2 - Enhanced Restrictions
@@ -6,7 +8,11 @@
 :: Check for Administrator privileges
 net session >nul 2>&1
 if %errorLevel% neq 0 (
-    powershell -Command "Start-Process '%~f0' -Verb RunAs"
+    powershell -NoProfile -Command "Start-Process -FilePath '%~f0' -Verb RunAs" 2>nul
+    if !errorLevel! neq 0 (
+        echo ERROR: Administrator privileges required.
+        pause
+    )
     exit /b
 )
 

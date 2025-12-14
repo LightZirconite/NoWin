@@ -1,4 +1,6 @@
 @echo off
+chcp 65001 >nul 2>&1
+setlocal EnableDelayedExpansion
 :: ============================================
 :: VERIFY.BAT - Complete System Status Verification
 :: Version 2.2 - Matches Lockdown/UserLock v2.2
@@ -6,7 +8,11 @@
 :: Check for Administrator privileges
 net session >nul 2>&1
 if %errorLevel% neq 0 (
-    powershell -Command "Start-Process '%~f0' -Verb RunAs"
+    powershell -NoProfile -Command "Start-Process -FilePath '%~f0' -Verb RunAs" 2>nul
+    if !errorLevel! neq 0 (
+        echo ERROR: Administrator privileges required.
+        pause
+    )
     exit /b
 )
 
@@ -314,7 +320,57 @@ powershell -NoProfile -Command "$a=Get-NetAdapter|Where{$_.Status -eq 'Up'}|Sele
 echo.
 
 :: =============================================
-:: SECTION 13: SUMMARY
+:: SECTION 13: WIFI PROTECTION STATUS
+:: =============================================
+echo [13] PROTECTION WIFI :
+echo ------------------------------------------------------------
+
+:: Network Connections folder blocked
+reg query "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" /v NoNetworkConnections 2>nul >nul
+if %errorLevel% equ 0 (
+    echo    * Dossier Connexions reseau   [OK] BLOQUE
+) else (
+    echo    * Dossier Connexions reseau   [!] ACCESSIBLE
+)
+
+:: Network tray icon
+reg query "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer" /v HideSCANetwork 2>nul >nul
+if %errorLevel% equ 0 (
+    echo    * Icone reseau barre taches   [OK] CACHE
+) else (
+    echo    * Icone reseau barre taches   [!] VISIBLE
+)
+
+:: Airplane mode disabled
+reg query "HKLM\SOFTWARE\Policies\Microsoft\Windows\Connectivity" /v AllowAirplaneMode 2>nul | findstr "0x0" >nul
+if %errorLevel% equ 0 (
+    echo    * Mode Avion                  [OK] DESACTIVE
+) else (
+    echo    * Mode Avion                  [!] DISPONIBLE
+)
+
+:: netsh blocked
+reg query "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\netsh.exe" /v Debugger 2>nul >nul
+if %errorLevel% equ 0 (
+    echo    * netsh.exe                   [OK] BLOQUE
+) else (
+    echo    * netsh.exe                   [!] ACCESSIBLE
+)
+
+:: Adapter changes restricted
+reg query "HKLM\SOFTWARE\Policies\Microsoft\Windows\Network Connections" /v NC_EnableAdminProhibits 2>nul >nul
+if %errorLevel% equ 0 (
+    echo    * Desactiver adaptateur       [OK] ADMIN REQUIS
+) else (
+    echo    * Desactiver adaptateur       [!] AUTORISE
+)
+
+echo.
+echo    NOTE: L'utilisateur peut CHANGER de WiFi mais pas se DECONNECTER.
+echo.
+
+:: =============================================
+:: SECTION 14: SUMMARY
 :: =============================================
 echo ============================================================
 echo                    RESUME DE SECURITE

@@ -1,4 +1,6 @@
 @echo off
+chcp 65001 >nul 2>&1
+setlocal EnableDelayedExpansion
 :: ============================================
 :: USERUNLOCK.BAT - Complete User Privilege Restore
 :: Version 2.2 - Matches UserLock v2.2
@@ -6,12 +8,16 @@
 :: Check for Administrator privileges
 net session >nul 2>&1
 if %errorLevel% neq 0 (
-    powershell -Command "Start-Process '%~f0' -Verb RunAs"
+    powershell -NoProfile -Command "Start-Process -FilePath '%~f0' -Verb RunAs" 2>nul
+    if !errorLevel! neq 0 (
+        echo ERROR: Administrator privileges required.
+        pause
+    )
     exit /b
 )
 
 echo ==========================================
-echo     USER PRIVILEGE RESTORE v2.1
+echo     USER PRIVILEGE RESTORE v2.2
 echo ==========================================
 echo.
 
