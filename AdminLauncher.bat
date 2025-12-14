@@ -57,6 +57,12 @@ goto :SKIP_UPDATE_CHECK
 
 :SKIP_UPDATE_CHECK
 
+:: Show splash once per process before any menu/installation
+if not defined SPLASH_DONE (
+    set "SPLASH_DONE=1"
+    call :SHOW_SPLASH
+)
+
 :: If --install mode, always do installation
 if "%INSTALL_ONLY%"=="1" goto :DO_INSTALL
 
@@ -74,28 +80,29 @@ start "" "%INSTALLED_PATH%"
 exit /b
 
 :: =============================================
-:: SPLASH SCREEN
+:: SPLASH SCREEN (one-time at startup)
 :: =============================================
 :SHOW_SPLASH
+mode con: cols=150 lines=40 >nul 2>&1
 set "FRAMES=[=     ] [==    ] [===   ] [====  ] [===== ] [======]"
 for %%A in (%FRAMES%) do (
     cls
     echo.
-    echo ==============================================
-    echo             NoWin Admin Launcher
-    echo ==============================================
+    echo =============================================================
+    echo                    NoWin Admin Launcher
+    echo =============================================================
     echo.
-    echo    Preparing... %%~A
-    timeout /t 1 /nobreak >nul
+    echo    Preparing system access... %%~A
+    powershell -NoProfile -Command "Start-Sleep -Milliseconds 160" >nul 2>&1
 )
 
 cls
 echo.
-echo ==========================================================
-echo                   LANCEUR ADMIN - NOWIN
-echo ==========================================================
-echo           Access rapides et scripts systeme
-echo ==========================================================
+echo =============================================================
+echo                       LANCEUR ADMIN - NOWIN
+echo =============================================================
+echo                Acces rapides et scripts systeme
+echo =============================================================
 echo.
 timeout /t 1 /nobreak >nul
 exit /b
@@ -228,23 +235,18 @@ echo ==========================================================
 echo.
 set /p "CHOICE=Choisissez une option: "
 
-if not defined SPLASH_DONE (
-    call :SHOW_SPLASH
-    set "SPLASH_DONE=1"
-)
-
 if /i "%CHOICE%"=="0" exit /b
 if /i "%CHOICE%"=="1" set "APP=control.exe" & set "APPNAME=Panneau de configuration" & goto :LAUNCH
 if /i "%CHOICE%"=="2" set "APP=taskmgr.exe" & set "APPNAME=Gestionnaire des taches" & goto :LAUNCH
 if /i "%CHOICE%"=="3" set "APP=regedit.exe" & set "APPNAME=Editeur de registre" & goto :LAUNCH
 if /i "%CHOICE%"=="4" set "APP=mmc.exe devmgmt.msc" & set "APPNAME=Gestionnaire de peripheriques" & goto :LAUNCH
-if /i "%CHOICE%"=="5" set "APP=ms-settings:" & set "APPNAME=Parametres Windows" & goto :LAUNCH_SETTINGS
+if /i "%CHOICE%"=="5" set "APP=ms-settings:" & set "APPNAME=Parametres Windows" & goto :LAUNCH
 if /i "%CHOICE%"=="6" set "APP=control.exe ncpa.cpl" & set "APPNAME=Connexions reseau" & goto :LAUNCH
 if /i "%CHOICE%"=="7" set "APP=mmc.exe compmgmt.msc" & set "APPNAME=Gestion de l'ordinateur" & goto :LAUNCH
 if /i "%CHOICE%"=="8" set "APP=msinfo32.exe" & set "APPNAME=Informations systeme" & goto :LAUNCH
 if /i "%CHOICE%"=="9" set "APP=mmc.exe services.msc" & set "APPNAME=Services Windows" & goto :LAUNCH
-if /i "%CHOICE%"=="10" set "APP=cmd.exe" & set "APPNAME=Invite de commandes" & goto :LAUNCH_CMD
-if /i "%CHOICE%"=="11" set "APP=powershell.exe" & set "APPNAME=PowerShell" & goto :LAUNCH_CMD
+if /i "%CHOICE%"=="10" set "APP=cmd.exe" & set "APPNAME=Invite de commandes" & goto :LAUNCH
+if /i "%CHOICE%"=="11" set "APP=powershell.exe" & set "APPNAME=PowerShell" & goto :LAUNCH
 if /i "%CHOICE%"=="12" set "APP=explorer.exe /e,C:\" & set "APPNAME=Explorateur" & goto :LAUNCH
 
 if /i "%CHOICE%"=="13" goto :UNOWHY_TOOLS
@@ -265,13 +267,13 @@ pause >nul
 goto :MENU
 
 :: =============================================
-:: LAUNCH - Standard applications via runas
+:: LAUNCH - All apps elevated via runas
 :: =============================================
 :LAUNCH
 cls
 echo.
 echo ==========================================================
-echo   Lancement: %APPNAME%
+echo   Lancement: %APPNAME% (Admin)
 echo ==========================================================
 echo.
 echo   Entrez le mot de passe Administrator quand demande.
@@ -279,6 +281,7 @@ echo.
 echo ==========================================================
 echo.
 
+:: Use runas for all targets (single elevation prompt per launch)
 runas /user:Administrator "%APP%"
 
 echo.
@@ -291,37 +294,6 @@ if !errorLevel! neq 0 (
 )
 echo Appuyez sur une touche pour revenir au menu...
 pause >nul
-goto :MENU
-
-:: =============================================
-:: LAUNCH_CMD - CMD/PowerShell keep window open
-:: =============================================
-:LAUNCH_CMD
-cls
-echo.
-echo ==========================================================
-echo   Lancement: %APPNAME% - Admin
-echo ==========================================================
-echo.
-echo   Entrez le mot de passe Administrator quand demande.
-echo.
-echo   NOTE: Une nouvelle fenetre va s'ouvrir.
-echo.
-echo ==========================================================
-echo.
-
-if /i "%APP%"=="cmd.exe" (
-    runas /user:Administrator "cmd.exe /k title CMD Administrator - NoWin"
-) else (
-    runas /user:Administrator "powershell.exe -NoExit -Command \"$Host.UI.RawUI.WindowTitle='PowerShell Admin - NoWin'\""
-)
-
-if !errorLevel! neq 0 (
-    echo.
-    echo ERREUR: Mot de passe incorrect ou compte desactive.
-    echo.
-    pause
-)
 goto :MENU
 
 :: =============================================
@@ -363,35 +335,6 @@ if !errorLevel! neq 0 (
     echo.
 )
 pause
-goto :MENU
-
-:: =============================================
-:: LAUNCH_SETTINGS - Windows Settings with explorer
-:: =============================================
-:LAUNCH_SETTINGS
-cls
-echo.
-echo ==========================================================
-echo   Lancement: Parametres Windows
-echo ==========================================================
-echo.
-echo   Ouverture des Parametres en mode administrateur...
-echo.
-echo ==========================================================
-echo.
-
-runas /user:Administrator "explorer.exe ms-settings:"
-
-echo.
-if !errorLevel! neq 0 (
-    echo [ERREUR] Impossible de lancer les Parametres
-    echo.
-) else (
-    echo [OK] Parametres Windows lance
-    echo.
-)
-echo Appuyez sur une touche pour revenir au menu...
-pause >nul
 goto :MENU
 
 :: =============================================
