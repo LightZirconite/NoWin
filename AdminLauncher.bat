@@ -150,13 +150,13 @@ if not exist "%INSTALLED_PATH%" (
     exit /b 1
 )
 
-:: Set restrictive NTFS permissions: Admin Full Control only
+:: Set restrictive NTFS permissions: Everyone can read/execute, only Admins can modify
 if "%INSTALL_ONLY%"=="0" echo [2a/4] Application des permissions securisees...
-icacls "%INSTALLED_PATH%" /inheritance:r >nul 2>&1
+icacls "%INSTALLED_PATH%" /reset >nul 2>&1
 icacls "%INSTALLED_PATH%" /grant "Administrators:(F)" >nul 2>&1
 icacls "%INSTALLED_PATH%" /grant "SYSTEM:(F)" >nul 2>&1
-icacls "%INSTALLED_PATH%" /deny "*S-1-5-32-545:(W,DC,AD,WD,DE)" >nul 2>&1
-attrib +s +h +r "%INSTALLED_PATH%" >nul 2>&1
+icacls "%INSTALLED_PATH%" /grant "*S-1-5-32-545:(RX)" >nul 2>&1
+attrib +r "%INSTALLED_PATH%" >nul 2>&1
 
 if "%INSTALL_ONLY%"=="0" echo [3/4] Telechargement de l'icone...
 powershell -NoProfile -Command "try { Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/LightZirconite/NoWin/main/logo.ico' -OutFile '%INSTALL_DIR%\logo.ico' -ErrorAction Stop } catch { }" >nul 2>&1
@@ -167,12 +167,10 @@ powershell -NoProfile -Command "$ws = New-Object -ComObject WScript.Shell; $s = 
 :: Protect shortcut (read-only + system)
 attrib +r +s "%SHORTCUT_PATH%" >nul 2>&1
 
-:: Protect folder (deny write/delete for Users group)
-icacls "%INSTALL_DIR%" /inheritance:r >nul 2>&1
+:: Protect folder: Users can read/execute, only Admins can modify
 icacls "%INSTALL_DIR%" /grant "Administrators:(OI)(CI)(F)" >nul 2>&1
 icacls "%INSTALL_DIR%" /grant "SYSTEM:(OI)(CI)(F)" >nul 2>&1
 icacls "%INSTALL_DIR%" /grant "*S-1-5-32-545:(OI)(CI)(RX)" >nul 2>&1
-icacls "%INSTALL_DIR%" /deny "*S-1-5-32-545:(W,DC,AD,WD,DE)" >nul 2>&1
 
 :: Show success message
 if "%INSTALL_ONLY%"=="1" (
@@ -189,8 +187,8 @@ echo ==========================================================
 echo.
 echo   * Script installe dans: %INSTALL_DIR%
 echo   * Raccourci cree sur le bureau public
-echo   * Fichier protege: Lecture/Execution Admin uniquement
-echo   * Dossier protege contre modification/suppression
+echo   * Fichier protege en lecture seule (modification admin uniquement)
+echo   * Anti-copie: Executable uniquement depuis Program Files
 echo.
 echo   Vous pouvez maintenant utiliser le raccourci
 echo   "Lanceur Admin" sur le bureau.
