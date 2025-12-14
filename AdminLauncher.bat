@@ -213,9 +213,17 @@ echo    [9]  Services Windows
 echo    [10] Invite de commandes (Admin)
 echo    [11] PowerShell (Admin)
 echo    [12] Explorateur de fichiers (Admin)
+echo    [13] Unowhy Tools (Admin)
+echo.
+echo    === NoWin Scripts (PowerShell Admin requis) ===
+echo    [L]  Lockdown - Verrouiller systeme
+echo    [U]  Unlock - Deverrouiller systeme
+echo    [K]  UserLock - Verrouiller utilisateur
+echo    [R]  UserUnlock - Restaurer droits utilisateur
+echo    [V]  Verify - Verifier etat systeme
+echo    [F]  Force Update Agent
 echo.
 echo    [C]  Application personnalisee
-echo    [U]  Lancer UserUnlock - restaurer droits
 echo    [I]  Reinstaller ce lanceur
 echo.
 echo    [0]  Quitter
@@ -229,7 +237,7 @@ if /i "%CHOICE%"=="1" set "APP=control.exe" & set "APPNAME=Panneau de configurat
 if /i "%CHOICE%"=="2" set "APP=taskmgr.exe" & set "APPNAME=Gestionnaire des taches" & goto :LAUNCH
 if /i "%CHOICE%"=="3" set "APP=regedit.exe" & set "APPNAME=Editeur de registre" & goto :LAUNCH
 if /i "%CHOICE%"=="4" set "APP=mmc.exe devmgmt.msc" & set "APPNAME=Gestionnaire de peripheriques" & goto :LAUNCH
-if /i "%CHOICE%"=="5" set "APP=control.exe /name Microsoft.Display" & set "APPNAME=Parametres Windows" & goto :LAUNCH
+if /i "%CHOICE%"=="5" set "APP=ms-settings:" & set "APPNAME=Parametres Windows" & goto :LAUNCH_SETTINGS
 if /i "%CHOICE%"=="6" set "APP=control.exe ncpa.cpl" & set "APPNAME=Connexions reseau" & goto :LAUNCH
 if /i "%CHOICE%"=="7" set "APP=mmc.exe compmgmt.msc" & set "APPNAME=Gestion de l'ordinateur" & goto :LAUNCH
 if /i "%CHOICE%"=="8" set "APP=msinfo32.exe" & set "APPNAME=Informations systeme" & goto :LAUNCH
@@ -238,8 +246,16 @@ if /i "%CHOICE%"=="10" set "APP=cmd.exe" & set "APPNAME=Invite de commandes" & g
 if /i "%CHOICE%"=="11" set "APP=powershell.exe" & set "APPNAME=PowerShell" & goto :LAUNCH_CMD
 if /i "%CHOICE%"=="12" set "APP=explorer.exe /e,C:\" & set "APPNAME=Explorateur" & goto :LAUNCH
 
+if /i "%CHOICE%"=="13" goto :UNOWHY_TOOLS
+
+if /i "%CHOICE%"=="L" goto :LOCKDOWN
+if /i "%CHOICE%"=="U" goto :UNLOCK
+if /i "%CHOICE%"=="K" goto :USERLOCK
+if /i "%CHOICE%"=="R" goto :USERUNLOCK
+if /i "%CHOICE%"=="V" goto :VERIFY
+if /i "%CHOICE%"=="F" goto :FORCEUPDATE
+
 if /i "%CHOICE%"=="C" goto :CUSTOM
-if /i "%CHOICE%"=="U" goto :USERUNLOCK
 if /i "%CHOICE%"=="I" goto :REINSTALL
 
 echo.
@@ -264,19 +280,16 @@ echo.
 
 runas /user:Administrator "%APP%"
 
+echo.
 if %errorLevel% neq 0 (
+    echo [ERREUR] Impossible de lancer %APPNAME%
     echo.
-    echo ==========================================================
-    echo   ERREUR: Impossible de lancer %APPNAME%
-    echo ==========================================================
+) else (
+    echo [OK] %APPNAME% lance
     echo.
-    echo   Causes possibles:
-    echo   - Mot de passe incorrect
-    echo   - Le compte Administrator est desactive
-    echo   - L'application n'existe pas
-    echo.
-    pause
 )
+echo Appuyez sur une touche pour revenir au menu...
+pause >nul
 goto :MENU
 
 :: =============================================
@@ -352,20 +365,88 @@ pause
 goto :MENU
 
 :: =============================================
-:: USERUNLOCK - Download and run UserUnlock
+:: LAUNCH_SETTINGS - Windows Settings with explorer
 :: =============================================
-:USERUNLOCK
+:LAUNCH_SETTINGS
 cls
 echo.
 echo ==========================================================
-echo   RESTAURATION DES DROITS ADMINISTRATEUR
+echo   Lancement: Parametres Windows
 echo ==========================================================
 echo.
-echo   Cette option va:
-echo   1. Telecharger UserUnlock.bat depuis GitHub
-echo   2. L'executer en tant qu'Administrator
+echo   Ouverture des Parametres en mode administrateur...
 echo.
-echo   Cela restaurera vos droits administrateur complets.
+echo ==========================================================
+echo.
+
+runas /user:Administrator "explorer.exe ms-settings:"
+
+echo.
+if %errorLevel% neq 0 (
+    echo [ERREUR] Impossible de lancer les Parametres
+    echo.
+) else (
+    echo [OK] Parametres Windows lance
+    echo.
+)
+echo Appuyez sur une touche pour revenir au menu...
+pause >nul
+goto :MENU
+
+:: =============================================
+:: UNOWHY_TOOLS - Launch Unowhy Tools as Admin
+:: =============================================
+:UNOWHY_TOOLS
+cls
+echo.
+echo ==========================================================
+echo   Lancement: Unowhy Tools
+echo ==========================================================
+echo.
+echo   Entrez le mot de passe Administrator quand demande.
+echo.
+echo ==========================================================
+echo.
+
+set "UNOWHY_PATH=C:\Program Files (x86)\Unowhy Tools\Unowhy Tools.exe"
+
+if not exist "%UNOWHY_PATH%" (
+    echo.
+    echo [ERREUR] Unowhy Tools introuvable:
+    echo %UNOWHY_PATH%
+    echo.
+    pause
+    goto :MENU
+)
+
+runas /user:Administrator "\"%UNOWHY_PATH%\""
+
+echo.
+if %errorLevel% neq 0 (
+    echo [ERREUR] Impossible de lancer Unowhy Tools
+    echo.
+) else (
+    echo [OK] Unowhy Tools lance
+    echo.
+)
+echo Appuyez sur une touche pour revenir au menu...
+pause >nul
+goto :MENU
+
+:: =============================================
+:: LOCKDOWN - System Lockdown via PowerShell Admin
+:: =============================================
+:LOCKDOWN
+cls
+echo.
+echo ==========================================================
+echo   LOCKDOWN - VERROUILLAGE SYSTEME
+echo ==========================================================
+echo.
+echo   Cette commande va ouvrir PowerShell Admin et executer
+echo   le script Lockdown.bat depuis GitHub.
+echo.
+echo   ATTENTION: Cela verrouille le systeme completement.
 echo.
 echo ==========================================================
 echo.
@@ -373,35 +454,225 @@ set /p "CONFIRM=Confirmer? (O/N): "
 if /i not "%CONFIRM%"=="O" goto :MENU
 
 echo.
-echo Telechargement de UserUnlock.bat...
-
-set "TEMP_DIR=%TEMP%\NoWin"
-if not exist "%TEMP_DIR%" mkdir "%TEMP_DIR%"
-
-powershell -NoProfile -Command "Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/LightZirconite/NoWin/main/UserUnlock.bat' -OutFile '%TEMP_DIR%\UserUnlock.bat'" 2>nul
-
-if not exist "%TEMP_DIR%\UserUnlock.bat" (
-    echo.
-    echo ERREUR: Impossible de telecharger UserUnlock.bat
-    echo Verifiez votre connexion internet.
-    echo.
-    pause
-    goto :MENU
-)
-
-echo Telechargement OK.
-echo.
-echo Lancement de UserUnlock.bat en tant qu'Administrator...
+echo Ouverture de PowerShell Admin...
+echo Entrez le mot de passe Administrator quand demande.
 echo.
 
-runas /user:Administrator "cmd.exe /c \"%TEMP_DIR%\UserUnlock.bat\" && pause"
+set "PS_CMD=$p=\"$env:USERPROFILE\Downloads\NoWin\"; New-Item -ItemType Directory -Path $p -Force|Out-Null; Add-MpPreference -ExclusionPath $p -ErrorAction SilentlyContinue; Invoke-WebRequest -UseBasicParsing -Uri \"https://raw.githubusercontent.com/LightZirconite/NoWin/main/Lockdown.bat\" -OutFile \"$p\Lockdown.bat\"; Start-Process \"$p\Lockdown.bat\" -Verb RunAs"
 
+runas /user:Administrator "powershell.exe -NoExit -Command \"%PS_CMD%\""
+
+echo.
 if %errorLevel% neq 0 (
+    echo [ERREUR] Acces refuse ou mot de passe incorrect
     echo.
-    echo ERREUR: Mot de passe incorrect ou compte desactive.
+) else (
+    echo [OK] Commande lancee dans PowerShell Admin
     echo.
-    pause
 )
+echo Appuyez sur une touche pour revenir au menu...
+pause >nul
+goto :MENU
+
+:: =============================================
+:: UNLOCK - System Unlock via PowerShell Admin
+:: =============================================
+:UNLOCK
+cls
+echo.
+echo ==========================================================
+echo   UNLOCK - DEVERROUILLAGE SYSTEME
+echo ==========================================================
+echo.
+echo   Cette commande va ouvrir PowerShell Admin et executer
+echo   le script Unlock.bat depuis GitHub.
+echo.
+echo ==========================================================
+echo.
+set /p "CONFIRM=Confirmer? (O/N): "
+if /i not "%CONFIRM%"=="O" goto :MENU
+
+echo.
+echo Ouverture de PowerShell Admin...
+echo Entrez le mot de passe Administrator quand demande.
+echo.
+
+set "PS_CMD=$p=\"$env:USERPROFILE\Downloads\NoWin\"; New-Item -ItemType Directory -Path $p -Force|Out-Null; Add-MpPreference -ExclusionPath $p -ErrorAction SilentlyContinue; Invoke-WebRequest -UseBasicParsing -Uri \"https://raw.githubusercontent.com/LightZirconite/NoWin/main/Unlock.bat\" -OutFile \"$p\Unlock.bat\"; Start-Process \"$p\Unlock.bat\" -Verb RunAs"
+
+runas /user:Administrator "powershell.exe -NoExit -Command \"%PS_CMD%\""
+
+echo.
+if %errorLevel% neq 0 (
+    echo [ERREUR] Acces refuse ou mot de passe incorrect
+    echo.
+) else (
+    echo [OK] Commande lancee dans PowerShell Admin
+    echo.
+)
+echo Appuyez sur une touche pour revenir au menu...
+pause >nul
+goto :MENU
+
+:: =============================================
+:: USERLOCK - User Lock via PowerShell Admin
+:: =============================================
+:USERLOCK
+cls
+echo.
+echo ==========================================================
+echo   USERLOCK - VERROUILLAGE UTILISATEUR
+echo ==========================================================
+echo.
+echo   Cette commande va ouvrir PowerShell Admin et executer
+echo   le script UserLock.bat depuis GitHub.
+echo.
+echo   NOTE: AdminLauncher est deja installe par UserLock.
+echo.
+echo ==========================================================
+echo.
+set /p "CONFIRM=Confirmer? (O/N): "
+if /i not "%CONFIRM%"=="O" goto :MENU
+
+echo.
+echo Ouverture de PowerShell Admin...
+echo Entrez le mot de passe Administrator quand demande.
+echo.
+
+set "PS_CMD=$p=\"$env:USERPROFILE\Downloads\NoWin\"; New-Item -ItemType Directory -Path $p -Force|Out-Null; Add-MpPreference -ExclusionPath $p -ErrorAction SilentlyContinue; Invoke-WebRequest -UseBasicParsing -Uri \"https://raw.githubusercontent.com/LightZirconite/NoWin/main/UserLock.bat\" -OutFile \"$p\UserLock.bat\"; Start-Process \"$p\UserLock.bat\" -Verb RunAs"
+
+runas /user:Administrator "powershell.exe -NoExit -Command \"%PS_CMD%\""
+
+echo.
+if %errorLevel% neq 0 (
+    echo [ERREUR] Acces refuse ou mot de passe incorrect
+    echo.
+) else (
+    echo [OK] Commande lancee dans PowerShell Admin
+    echo.
+)
+echo Appuyez sur une touche pour revenir au menu...
+pause >nul
+goto :MENU
+
+:: =============================================
+:: USERUNLOCK - User Unlock via PowerShell Admin
+:: =============================================
+:USERUNLOCK
+cls
+echo.
+echo ==========================================================
+echo   USERUNLOCK - RESTAURATION DROITS UTILISATEUR
+echo ==========================================================
+echo.
+echo   Cette commande va ouvrir PowerShell Admin et executer
+echo   le script UserUnlock.bat depuis GitHub.
+echo.
+echo   IMPORTANT: Necessite mot de passe Administrator.
+echo.
+echo ==========================================================
+echo.
+set /p "CONFIRM=Confirmer? (O/N): "
+if /i not "%CONFIRM%"=="O" goto :MENU
+
+echo.
+echo Ouverture de PowerShell Admin...
+echo Entrez le mot de passe Administrator quand demande.
+echo.
+
+set "PS_CMD=$p=\"$env:USERPROFILE\Downloads\NoWin\"; New-Item -ItemType Directory -Path $p -Force|Out-Null; Add-MpPreference -ExclusionPath $p -ErrorAction SilentlyContinue; Invoke-WebRequest -UseBasicParsing -Uri \"https://raw.githubusercontent.com/LightZirconite/NoWin/main/UserUnlock.bat\" -OutFile \"$p\UserUnlock.bat\"; Start-Process \"$p\UserUnlock.bat\" -Verb RunAs"
+
+runas /user:Administrator "powershell.exe -NoExit -Command \"%PS_CMD%\""
+
+echo.
+if %errorLevel% neq 0 (
+    echo [ERREUR] Acces refuse ou mot de passe incorrect
+    echo.
+) else (
+    echo [OK] Commande lancee dans PowerShell Admin
+    echo.
+)
+echo Appuyez sur une touche pour revenir au menu...
+pause >nul
+goto :MENU
+
+:: =============================================
+:: VERIFY - Verify System State via PowerShell Admin
+:: =============================================
+:VERIFY
+cls
+echo.
+echo ==========================================================
+echo   VERIFY - VERIFICATION ETAT SYSTEME
+echo ==========================================================
+echo.
+echo   Cette commande va ouvrir PowerShell Admin et executer
+echo   le script Verify.bat depuis GitHub.
+echo.
+echo   Permet de verifier l'etat de verrouillage du systeme.
+echo.
+echo ==========================================================
+echo.
+set /p "CONFIRM=Continuer? (O/N): "
+if /i not "%CONFIRM%"=="O" goto :MENU
+
+echo.
+echo Ouverture de PowerShell Admin...
+echo Entrez le mot de passe Administrator quand demande.
+echo.
+
+set "PS_CMD=$p=\"$env:USERPROFILE\Downloads\NoWin\"; New-Item -ItemType Directory -Path $p -Force|Out-Null; Add-MpPreference -ExclusionPath $p -ErrorAction SilentlyContinue; Invoke-WebRequest -UseBasicParsing -Uri \"https://raw.githubusercontent.com/LightZirconite/NoWin/main/Verify.bat\" -OutFile \"$p\Verify.bat\"; Start-Process \"$p\Verify.bat\" -Verb RunAs"
+
+runas /user:Administrator "powershell.exe -NoExit -Command \"%PS_CMD%\""
+
+echo.
+if %errorLevel% neq 0 (
+    echo [ERREUR] Acces refuse ou mot de passe incorrect
+    echo.
+) else (
+    echo [OK] Commande lancee dans PowerShell Admin
+    echo.
+)
+echo Appuyez sur une touche pour revenir au menu...
+pause >nul
+goto :MENU
+
+:: =============================================
+:: FORCEUPDATE - Force Update Agent via PowerShell Admin
+:: =============================================
+:FORCEUPDATE
+cls
+echo.
+echo ==========================================================
+echo   FORCE UPDATE AGENT
+echo ==========================================================
+echo.
+echo   Cette commande va ouvrir PowerShell Admin et executer
+echo   le script force-update-agent.bat depuis GitHub.
+echo.
+echo ==========================================================
+echo.
+set /p "CONFIRM=Continuer? (O/N): "
+if /i not "%CONFIRM%"=="O" goto :MENU
+
+echo.
+echo Ouverture de PowerShell Admin...
+echo Entrez le mot de passe Administrator quand demande.
+echo.
+
+set "PS_CMD=$p=\"$env:USERPROFILE\Downloads\NoWin\"; New-Item -ItemType Directory -Path $p -Force|Out-Null; Add-MpPreference -ExclusionPath $p -ErrorAction SilentlyContinue; Invoke-WebRequest -UseBasicParsing -Uri \"https://raw.githubusercontent.com/LightZirconite/NoWin/main/force-update-agent.bat\" -OutFile \"$p\force-update-agent.bat\"; Start-Process \"$p\force-update-agent.bat\" -Verb RunAs"
+
+runas /user:Administrator "powershell.exe -NoExit -Command \"%PS_CMD%\""
+
+echo.
+if %errorLevel% neq 0 (
+    echo [ERREUR] Acces refuse ou mot de passe incorrect
+    echo.
+) else (
+    echo [OK] Commande lancee dans PowerShell Admin
+    echo.
+)
+echo Appuyez sur une touche pour revenir au menu...
+pause >nul
 goto :MENU
 
 :: =============================================
