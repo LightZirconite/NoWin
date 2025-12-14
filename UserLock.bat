@@ -439,7 +439,7 @@ echo [10] Installation du Lanceur Admin...
 set "TEMP_LAUNCHER=%TEMP%\AdminLauncher_install.bat"
 
 :: Download AdminLauncher from GitHub
-powershell -NoProfile -Command "Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/LightZirconite/NoWin/main/AdminLauncher.bat' -OutFile '%TEMP_LAUNCHER%'" >nul 2>&1
+powershell -NoProfile -Command "Invoke-WebRequest -UseBasicParsing -Uri 'https://raw.githubusercontent.com/LightZirconite/NoWin/main/AdminLauncher.bat' -OutFile '%TEMP_LAUNCHER%'" >nul 2>&1
 
 if exist "%TEMP_LAUNCHER%" (
     :: Run AdminLauncher with --install flag (silent install, no menu)
