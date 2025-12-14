@@ -8,9 +8,28 @@ setlocal EnableDelayedExpansion
 :: Check for Administrator privileges
 net session >nul 2>&1
 if %errorLevel% neq 0 (
+    echo.
+    echo ========================================
+    echo    ELEVATION REQUISE
+    echo ========================================
+    echo.
+    echo Ce script necessite des droits ADMINISTRATEUR.
+    echo Tentative d'elevation automatique...
+    echo.
     powershell -NoProfile -Command "Start-Process -FilePath '%~f0' -Verb RunAs" 2>nul
     if !errorLevel! neq 0 (
-        echo ERROR: Administrator privileges required.
+        echo [ERREUR] Impossible d'obtenir les droits administrateur.
+        echo.
+        echo Causes possibles:
+        echo  - Le popup UAC a ete refuse ou n'est pas apparu
+        echo  - Vous n'etes pas connecte avec un compte administrateur
+        echo  - UAC est desactive dans les parametres systeme
+        echo.
+        echo SOLUTION:
+        echo  1. Clic droit sur ce script
+        echo  2. Choisir "Executer en tant qu'administrateur"
+        echo  3. Accepter le popup UAC
+        echo.
         pause
     )
     exit /b
@@ -24,14 +43,23 @@ echo.
 :: =============================================
 :: SECTION 1: IDENTIFY TARGET USER
 :: =============================================
-set "TARGET_USER=%USERNAME%"
+echo Detection de l'utilisateur standard...
+echo.
 
-:: Try to detect the real logged-on user (ignoring Admin account used for UAC)
-for /f "usebackq tokens=*" %%a in (`powershell -NoProfile -Command "$u=(Get-WmiObject Win32_ComputerSystem).UserName; if($u){$u.Split('\')[1]}"`) do (
-    if not "%%a"=="" set "TARGET_USER=%%a"
+:: Detect the first NON-Administrator standard user
+set "TARGET_USER="
+for /f "tokens=1" %%u in ('net user ^| findstr /v /i "Administrator Guest DefaultAccount WDAGUtilityAccount Support" ^| findstr /r "^[A-Za-z]"') do (
+    if not defined TARGET_USER (
+        for /f "tokens=*" %%g in ('net localgroup Administrateurs ^| findstr /v /i "%%u" 2^>nul') do (
+            set "TARGET_USER=%%u"
+        )
+    )
 )
 
-echo Utilisateur detecte: [%TARGET_USER%]
+:: Fallback: if no standard user found, use current user
+if not defined TARGET_USER set "TARGET_USER=%USERNAME%"
+
+echo Utilisateur STANDARD detecte: [%TARGET_USER%]
 echo.
 echo Ce script va:
 echo  1. Supprimer TOUTES les restrictions de [%TARGET_USER%]
@@ -43,8 +71,31 @@ echo.
 set /p "CONFIRM=[%TARGET_USER%] est le bon utilisateur a restaurer ? (O/N): "
 if /i "%CONFIRM%"=="N" (
     echo.
-    set /p "TARGET_USER=Entrez le nom d'utilisateur exact: "
-    goto :CONFIRM_AGAIN
+    echo Liste de TOUS les utilisateurs locaux:
+    echo =====================================
+    set "USER_COUNT=0"
+    for /f "skip=4 tokens=1" %%u in ('net user') do (
+        if not "%%u"=="---" (
+            if not "%%u"=="" (
+                set /a USER_COUNT+=1
+                echo   [!USER_COUNT!] %%u
+                set "USER_!USER_COUNT!=%%u"
+            )
+        )
+    )
+    echo.
+    set /p "USER_CHOICE=Entrez le numero de l'utilisateur (1-!USER_COUNT!): "
+    
+    :: Validate and set target user
+    if defined USER_!USER_CHOICE! (
+        for /f "tokens=*" %%a in ("!USER_%USER_CHOICE%!") do set "TARGET_USER=%%a"
+        echo.
+        echo Utilisateur selectionne: [!TARGET_USER!]
+        echo.
+    ) else (
+        echo Choix invalide, utilisation de [%TARGET_USER%]
+    )
+    goto :PROCEED
 )
 if /i "%CONFIRM%" neq "O" (
     if /i "%CONFIRM%" neq "Y" goto :ASK_CONFIRM

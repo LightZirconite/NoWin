@@ -8,9 +8,28 @@ setlocal EnableDelayedExpansion
 :: Check for Administrator privileges
 net session >nul 2>&1
 if %errorLevel% neq 0 (
+    echo.
+    echo ========================================
+    echo    ELEVATION REQUISE
+    echo ========================================
+    echo.
+    echo Ce script necessite des droits ADMINISTRATEUR.
+    echo Tentative d'elevation automatique...
+    echo.
     powershell -NoProfile -Command "Start-Process -FilePath '%~f0' -Verb RunAs" 2>nul
     if !errorLevel! neq 0 (
-        echo ERROR: Administrator privileges required.
+        echo [ERREUR] Impossible d'obtenir les droits administrateur.
+        echo.
+        echo Causes possibles:
+        echo  - Le popup UAC a ete refuse ou n'est pas apparu
+        echo  - Vous n'etes pas connecte avec un compte administrateur
+        echo  - UAC est desactive dans les parametres systeme
+        echo.
+        echo SOLUTION:
+        echo  1. Clic droit sur ce script
+        echo  2. Choisir "Executer en tant qu'administrateur"
+        echo  3. Accepter le popup UAC
+        echo.
         pause
     )
     exit /b
@@ -77,7 +96,11 @@ bcdedit /timeout 30 >nul 2>&1
 bcdedit /set {default} bootmenupolicy Standard >nul 2>&1
 bcdedit /set {current} bootmenupolicy Standard >nul 2>&1
 
-:: 2.6 REMOVE advanced options flags (DO NOT SET TO TRUE - causes boot editor to appear!)
+:: 2.6 DISABLE advanced options flags (use /set false as fallback, /deletevalue may fail)
+:: First try to set to false (always works), then try to delete
+bcdedit /set {globalsettings} advancedoptions false >nul 2>&1
+bcdedit /set {globalsettings} optionsedit false >nul 2>&1
+:: Also try deletevalue as secondary cleanup
 bcdedit /deletevalue {globalsettings} advancedoptions >nul 2>&1
 bcdedit /deletevalue {globalsettings} optionsedit >nul 2>&1
 

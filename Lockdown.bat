@@ -8,9 +8,28 @@ setlocal EnableDelayedExpansion
 :: Check for Administrator privileges
 net session >nul 2>&1
 if %errorLevel% neq 0 (
+    echo.
+    echo ========================================
+    echo    ELEVATION REQUISE
+    echo ========================================
+    echo.
+    echo Ce script necessite des droits ADMINISTRATEUR.
+    echo Tentative d'elevation automatique...
+    echo.
     powershell -NoProfile -Command "Start-Process -FilePath '%~f0' -Verb RunAs" 2>nul
     if !errorLevel! neq 0 (
-        echo ERROR: Administrator privileges required.
+        echo [ERREUR] Impossible d'obtenir les droits administrateur.
+        echo.
+        echo Causes possibles:
+        echo  - Le popup UAC a ete refuse ou n'est pas apparu
+        echo  - Vous n'etes pas connecte avec un compte administrateur
+        echo  - UAC est desactive dans les parametres systeme
+        echo.
+        echo SOLUTION:
+        echo  1. Clic droit sur ce script
+        echo  2. Choisir "Executer en tant qu'administrateur"
+        echo  3. Accepter le popup UAC
+        echo.
         pause
     )
     exit /b
