@@ -3,7 +3,7 @@ chcp 65001 >nul 2>&1
 setlocal EnableDelayedExpansion
 :: ============================================
 :: USERLOCK.BAT - Advanced User Privilege Lockdown
-:: Version 2.4 - Fixed Language Detection & Registry Targeting
+:: Version 2.5 - Enhanced Error Handling & Safety Checks
 :: ============================================
 :: Check for Administrator privileges
 net session >nul 2>&1
@@ -36,7 +36,7 @@ if %errorLevel% neq 0 (
 )
 
 echo ==========================================
-echo     USER PRIVILEGE LOCKDOWN v2.4
+echo     USER PRIVILEGE LOCKDOWN v2.5
 echo ==========================================
 echo.
 
@@ -153,6 +153,15 @@ if %errorLevel% neq 0 (
     exit /b
 )
 
+:: Verify Administrator is truly active
+net user Administrator | findstr /i "active" | findstr /i "Yes" >nul 2>&1
+if %errorLevel% neq 0 (
+    echo    * ERREUR CRITIQUE: Administrator n'est pas actif.
+    echo    * Impossible de continuer sans compte admin de secours.
+    pause
+    exit /b
+)
+
 :: HIDE Administrator from login screen
 reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon\SpecialAccounts\UserList" /v Administrator /t REG_DWORD /d 0 /f >nul 2>&1
 echo    * Administrator active et CACHE de l'ecran de connexion. Mdp: %ADMIN_PASS%
@@ -226,7 +235,13 @@ for /f "tokens=*" %%r in ('powershell -NoProfile -Command "$members = net localg
 if "!IS_ADMIN!"=="0" (
     echo    * Succes. !TARGET_USER! est maintenant utilisateur standard.
 ) else (
-    echo    * ERREUR: Impossible de retirer du groupe !ADMIN_GROUP!.
+    echo    * ERREUR CRITIQUE: Impossible de retirer du groupe !ADMIN_GROUP!.
+    echo.
+    echo    * Le script va s'arreter pour eviter un etat incoherent.
+    echo    * Verifiez que le compte Administrator est actif:
+    echo      net user Administrator
+    pause
+    exit /b
 )
 
 :: =============================================
@@ -250,12 +265,23 @@ if errorlevel 1 (
             set "USER_REG_LOADED=1"
             echo    * Registre utilisateur charge depuis !NTUSER_PATH!
         ) else (
-            echo    * ATTENTION: Impossible de charger le registre utilisateur.
-            set "REG_ROOT=HKCU"
+            echo    * ERREUR: Impossible de charger le registre utilisateur.
+            echo    * Les restrictions ne seront PAS appliquees correctement.
+            echo.
+            echo    * Causes possibles:
+            echo      - Le registre est deja charge sous un autre SID
+            echo      - Le fichier NTUSER.DAT est corrompu
+            echo      - Droits insuffisants
+            echo.
+            pause
+            exit /b
         )
     ) else (
-        echo    * ATTENTION: NTUSER.DAT introuvable, utilisation HKCU.
-        set "REG_ROOT=HKCU"
+        echo    * ERREUR: NTUSER.DAT introuvable a !NTUSER_PATH!
+        echo    * Impossible d'appliquer les restrictions utilisateur.
+        echo.
+        pause
+        exit /b
     )
 ) else (
     set "USER_REG_LOADED=0"
@@ -451,7 +477,7 @@ echo    * Menu boot restreint.
 :: =============================================
 echo.
 echo ==========================================
-echo     USER LOCKDOWN TERMINE (v2.4)
+echo     USER LOCKDOWN TERMINE (v2.5)
 echo ==========================================
 echo.
 echo Utilisateur [!TARGET_USER!] - Restrictions appliquees:
@@ -493,6 +519,31 @@ echo.
 echo NOTE: Administrator est cache mais accessible via:
 echo   Win+R puis: runas /user:Administrator cmd
 echo.
-echo Deconnexion dans 10 secondes...
-timeout /t 10
+echo ==========================================
+echo    IMPORTANT: DECONNEXION REQUISE
+echo ==========================================
+echo.
+echo Les changements de groupe necessitent une deconnexion
+echo pour prendre effet completement.
+echo.
+echo Appuyez sur une touche pour vous deconnecter...
+pause >nul
+
+:: Final verification before logout
+echo.
+echo Verification finale...
+net user Administrator | findstr /i "active" | findstr /i "Yes" >nul 2>&1
+if %errorLevel% neq 0 (
+    echo.
+    echo [ERREUR CRITIQUE] Administrator n'est PAS actif!
+    echo Vous allez etre deconnecte SANS compte admin de secours.
+    echo.
+    echo ANNULATION de la deconnexion.
+    echo Utilisez UserUnlock.bat pour restaurer les droits.
+    pause
+    exit /b
+)
+
+echo    * Administrator verifie: ACTIF
+echo    * Deconnexion securisee...
 shutdown /l
