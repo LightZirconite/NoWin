@@ -57,17 +57,11 @@ goto :SKIP_UPDATE_CHECK
 
 :SKIP_UPDATE_CHECK
 
-:: Show splash once per process before any menu/installation
-if not defined SPLASH_DONE (
-    set "SPLASH_DONE=1"
-    call :SHOW_SPLASH
-)
-
 :: If --install mode, always do installation
 if "%INSTALL_ONLY%"=="1" goto :DO_INSTALL
 
 :: Check if we're running from the installed location
-if /i "%CURRENT_PATH%"=="%INSTALLED_PATH%" goto :MENU
+if /i "%CURRENT_PATH%"=="%INSTALLED_PATH%" goto :SHOW_SPLASH_ONCE
 
 :: Not installed - offer to install
 if not exist "%INSTALLED_PATH%" goto :DO_INSTALL
@@ -80,11 +74,21 @@ start "" "%INSTALLED_PATH%"
 exit /b
 
 :: =============================================
-:: SPLASH SCREEN (one-time at startup)
+:: SPLASH ENTRY POINT (menu only)
+:: =============================================
+:SHOW_SPLASH_ONCE
+if defined SPLASH_DONE goto :AFTER_SPLASH
+set "SPLASH_DONE=1"
+call :SHOW_SPLASH
+:AFTER_SPLASH
+goto :MENU
+
+:: =============================================
+:: SPLASH SCREEN (one-time at menu entry)
 :: =============================================
 :SHOW_SPLASH
 mode con: cols=150 lines=40 >nul 2>&1
-set "FRAMES=[=     ] [==    ] [===   ] [====  ] [===== ] [======]"
+set "FRAMES=[= ] [== ] [===] [====]"
 for %%A in (%FRAMES%) do (
     cls
     echo.
@@ -93,7 +97,7 @@ for %%A in (%FRAMES%) do (
     echo =============================================================
     echo.
     echo    Preparing system access... %%~A
-    powershell -NoProfile -Command "Start-Sleep -Milliseconds 160" >nul 2>&1
+    powershell -NoProfile -Command "Start-Sleep -Milliseconds 70" >nul 2>&1
 )
 
 cls
@@ -104,7 +108,7 @@ echo =============================================================
 echo                Acces rapides et scripts systeme
 echo =============================================================
 echo.
-timeout /t 1 /nobreak >nul
+powershell -NoProfile -Command "Start-Sleep -Milliseconds 350" >nul 2>&1
 exit /b
 
 :: =============================================
@@ -198,6 +202,7 @@ goto :MENU
 :: MAIN MENU
 :: =============================================
 :MENU
+if not defined SPLASH_DONE call :SHOW_SPLASH_ONCE
 cls
 echo.
 echo ==========================================================
