@@ -3,7 +3,7 @@ chcp 65001 >nul 2>&1
 setlocal EnableDelayedExpansion
 :: ============================================
 :: USERLOCK.BAT - Advanced User Privilege Lockdown
-:: Version 2.3 - Hidden Support Account
+:: Version 2.4 - Fixed Language Detection & Registry Targeting
 :: ============================================
 :: Check for Administrator privileges
 net session >nul 2>&1
@@ -73,13 +73,13 @@ echo Detection de l'utilisateur cible...
 
 :: Method 1: Check explorer.exe owner (most reliable for detecting real user)
 set "TARGET_USER="
-for /f "tokens=*" %%u in ('powershell -NoProfile -Command "$p = Get-Process explorer -ErrorAction SilentlyContinue ^| Select-Object -First 1; if($p){(Get-WmiObject Win32_Process -Filter \"ProcessId=$($p.Id)\").GetOwner().User}"') do (
+for /f "tokens=*" %%u in ('powershell -NoProfile -Command "$p = Get-Process explorer -ErrorAction SilentlyContinue ^| Select-Object -First 1; if($p){$proc = Get-CimInstance Win32_Process ^| Where-Object {$_.ProcessId -eq $p.Id}; if($proc){$owner = Invoke-CimMethod -InputObject $proc -MethodName GetOwner; $owner.User}}"') do (
     if not "%%u"=="" if /i not "%%u"=="Administrator" if /i not "%%u"=="Administrateur" set "TARGET_USER=%%u"
 )
 
 :: Method 2: If no explorer, get first non-system local user
 if not defined TARGET_USER (
-    for /f "tokens=*" %%u in ('powershell -NoProfile -Command "$users = Get-WmiObject Win32_UserAccount -Filter \"LocalAccount=True AND Disabled=False\" ^| Where-Object {$_.Name -notmatch 'Administrator^|Guest^|DefaultAccount^|WDAGUtilityAccount^|Support'}; if($users){($users ^| Select-Object -First 1).Name}"') do (
+    for /f "tokens=*" %%u in ('powershell -NoProfile -Command "$users = Get-LocalUser ^| Where-Object {$_.Enabled -and $_.Name -notmatch 'Administrator^|Guest^|DefaultAccount^|WDAGUtilityAccount^|Support'}; if($users){($users ^| Select-Object -First 1).Name}"') do (
         if not "%%u"=="" set "TARGET_USER=%%u"
     )
 )
@@ -94,7 +94,7 @@ echo Utilisateur detecte: [!TARGET_USER!]
 
 :: Get the SID of target user for registry operations
 set "TARGET_SID="
-for /f "tokens=*" %%s in ('powershell -NoProfile -Command "$u = Get-WmiObject Win32_UserAccount -Filter \"Name='!TARGET_USER!' AND LocalAccount=True\"; if($u){$u.SID}"') do (
+for /f "tokens=*" %%s in ('powershell -NoProfile -Command "$u = Get-LocalUser -Name '!TARGET_USER!' -ErrorAction SilentlyContinue; if($u){$u.SID.Value}"') do (
     set "TARGET_SID=%%s"
 )
 echo    * SID: !TARGET_SID!

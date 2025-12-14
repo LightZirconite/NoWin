@@ -3,7 +3,7 @@ chcp 65001 >nul 2>&1
 setlocal EnableDelayedExpansion
 :: ============================================
 :: USERUNLOCK.BAT - Complete User Privilege Restore
-:: Version 2.3 - Matches UserLock v2.3
+:: Version 2.4 - Matches UserLock v2.4
 :: ============================================
 :: Check for Administrator privileges
 net session >nul 2>&1
@@ -80,13 +80,13 @@ for /f "skip=6 tokens=1" %%a in ('net localgroup "!ADMIN_GROUP!" 2^>nul') do (
 
 :: Detect the first NON-Administrator standard user using PowerShell (more reliable)
 set "TARGET_USER="
-for /f "tokens=*" %%u in ('powershell -NoProfile -Command "$admins = (net localgroup '!ADMIN_GROUP!' 2^>$null) -split "`n" ^| Where-Object {$_ -match '^\w'}; $users = Get-WmiObject Win32_UserAccount -Filter 'LocalAccount=True AND Disabled=False' ^| Where-Object {$_.Name -notmatch 'Administrator^|Guest^|DefaultAccount^|WDAGUtilityAccount^|Support' -and $admins -notcontains $_.Name}; if($users){($users ^| Select-Object -First 1).Name}"') do (
+for /f "tokens=*" %%u in ('powershell -NoProfile -Command "$admins = @(); try {net localgroup '!ADMIN_GROUP!' 2^>$null ^| Select-Object -Skip 6 ^| ForEach-Object {if($_ -match '^(\S+)'){$admins += $matches[1]}}} catch {}; $users = Get-LocalUser ^| Where-Object {$_.Enabled -and $_.Name -notmatch 'Administrator^|Guest^|DefaultAccount^|WDAGUtilityAccount^|Support' -and $admins -notcontains $_.Name}; if($users){($users ^| Select-Object -First 1).Name}"') do (
     if not "%%u"=="" set "TARGET_USER=%%u"
 )
 
 :: Fallback: if no standard user found, check explorer.exe owner
 if not defined TARGET_USER (
-    for /f "tokens=*" %%u in ('powershell -NoProfile -Command "$p = Get-Process explorer -ErrorAction SilentlyContinue ^| Select-Object -First 1; if($p){(Get-WmiObject Win32_Process -Filter \"ProcessId=$($p.Id)\").GetOwner().User}"') do (
+    for /f "tokens=*" %%u in ('powershell -NoProfile -Command "$p = Get-Process explorer -ErrorAction SilentlyContinue ^| Select-Object -First 1; if($p){$proc = Get-CimInstance Win32_Process ^| Where-Object {$_.ProcessId -eq $p.Id}; if($proc){$owner = Invoke-CimMethod -InputObject $proc -MethodName GetOwner; $owner.User}}"') do (
         if not "%%u"=="" if /i not "%%u"=="Administrator" set "TARGET_USER=%%u"
     )
 )
@@ -107,7 +107,7 @@ if not defined TARGET_USER (
 
 :: Get the SID of target user for registry operations
 set "TARGET_SID="
-for /f "tokens=*" %%s in ('powershell -NoProfile -Command "$u = Get-WmiObject Win32_UserAccount -Filter \"Name='!TARGET_USER!' AND LocalAccount=True\"; if($u){$u.SID}"') do (
+for /f "tokens=*" %%s in ('powershell -NoProfile -Command "$u = Get-LocalUser -Name '!TARGET_USER!' -ErrorAction SilentlyContinue; if($u){$u.SID.Value}"') do (
     set "TARGET_SID=%%s"
 )
 

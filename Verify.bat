@@ -3,7 +3,7 @@ chcp 65001 >nul 2>&1
 setlocal EnableDelayedExpansion
 :: ============================================
 :: VERIFY.BAT - Complete System Status Verification
-:: Version 2.2 - Matches Lockdown/UserLock v2.2
+:: Version 2.4 - Matches Lockdown/UserLock v2.4
 :: ============================================
 :: Check for Administrator privileges
 net session >nul 2>&1
@@ -37,7 +37,7 @@ if %errorLevel% neq 0 (
 
 echo.
 echo ============================================================
-echo          VERIFICATION COMPLETE DU SYSTEME v2.2
+echo          VERIFICATION COMPLETE DU SYSTEME v2.4
 echo ============================================================
 echo.
 
@@ -228,13 +228,24 @@ echo.
 :: =============================================
 echo [9] PRIVILEGES UTILISATEUR :
 echo ------------------------------------------------------------
+
+:: Detect Administrators group name (language-independent)
+set "ADMIN_GROUP="
+for /f "tokens=*" %%g in ('powershell -NoProfile -Command "(New-Object System.Security.Principal.SecurityIdentifier('S-1-5-32-544')).Translate([System.Security.Principal.NTAccount]).Value.Split('\')[-1]"') do (
+    set "ADMIN_GROUP=%%g"
+)
+
 set "CHECK_USER=%USERNAME%"
 for /f "usebackq tokens=*" %%a in (`powershell -NoProfile -Command "$u=(Get-WmiObject Win32_ComputerSystem).UserName; if($u){$u.Split('\')[1]}"`) do (
     if not "%%a"=="" set "CHECK_USER=%%a"
 )
 
 echo    Utilisateur actuel: [%CHECK_USER%]
-net localgroup Administrators 2>nul | findstr /i /c:"%CHECK_USER%" >nul
+if defined ADMIN_GROUP (
+    net localgroup "!ADMIN_GROUP!" 2>nul | findstr /i /c:"%CHECK_USER%" >nul
+) else (
+    net localgroup Administrators 2>nul | findstr /i /c:"%CHECK_USER%" >nul
+)
 if %errorLevel% equ 0 (
     echo    * [!] ADMINISTRATEUR - Non restreint
 ) else (
@@ -243,6 +254,16 @@ if %errorLevel% equ 0 (
 echo.
 echo    Compte Administrator integre:
 net user Administrator 2>nul | findstr /i "active"
+
+:: Check if Administrator is hidden from login screen
+set "ADMIN_HIDDEN=0"
+reg query "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon\SpecialAccounts\UserList" /v Administrator 2>nul | findstr "0x0" >nul
+if %errorLevel% equ 0 set "ADMIN_HIDDEN=1"
+if "!ADMIN_HIDDEN!"=="1" (
+    echo    * [OK] Administrator CACHE de l'ecran de connexion
+) else (
+    echo    * [!] Administrator VISIBLE sur l'ecran de connexion
+)
 echo.
 
 :: =============================================
