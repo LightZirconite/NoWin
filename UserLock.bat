@@ -3,7 +3,7 @@ chcp 65001 >nul 2>&1
 setlocal EnableDelayedExpansion
 :: ============================================
 :: USERLOCK.BAT - Advanced User Privilege Lockdown
-:: Version 2.5 - Enhanced Error Handling & Safety Checks
+:: Version 3.0 - Focus: User restrictions only
 :: ============================================
 
 :: Check for --yes argument (bypass confirmations)
@@ -42,7 +42,7 @@ if %errorLevel% neq 0 (
 )
 
 echo ==========================================
-echo     USER PRIVILEGE LOCKDOWN v2.5
+echo     USER PRIVILEGE LOCKDOWN v3.0
 echo ==========================================
 echo.
 
@@ -491,7 +491,7 @@ echo    * Menu boot restreint.
 :: =============================================
 echo.
 echo ==========================================
-echo     USER LOCKDOWN TERMINE (v2.5)
+echo     USER LOCKDOWN TERMINE (v3.0)
 echo ==========================================
 echo.
 echo Utilisateur [!TARGET_USER!] - Restrictions appliquees:

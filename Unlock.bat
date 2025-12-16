@@ -3,7 +3,7 @@ chcp 65001 >nul 2>&1
 setlocal EnableDelayedExpansion
 :: ============================================
 :: UNLOCK.BAT - Complete System Recovery Restore
-:: Version 2.3 - Matches Lockdown v2.3 (WiFi Enhanced)
+:: Version 3.0 - Matches Lockdown v3.0
 :: ============================================
 
 :: Check for --yes argument (bypass confirmations)
@@ -42,7 +42,7 @@ if %errorLevel% neq 0 (
 )
 
 echo ==========================================
-echo     SYSTEM UNLOCK v2.2
+echo     SYSTEM UNLOCK v3.0
 echo ==========================================
 echo.
 
@@ -102,11 +102,7 @@ bcdedit /timeout 30 >nul 2>&1
 bcdedit /set {default} bootmenupolicy Standard >nul 2>&1
 bcdedit /set {current} bootmenupolicy Standard >nul 2>&1
 
-:: 2.6 DISABLE advanced options flags (use /set false as fallback, /deletevalue may fail)
-:: First try to set to false (always works), then try to delete
-bcdedit /set {globalsettings} advancedoptions false >nul 2>&1
-bcdedit /set {globalsettings} optionsedit false >nul 2>&1
-:: Also try deletevalue as secondary cleanup
+:: 2.6 Re-enable advanced options (delete the restrictions set by Lockdown)
 bcdedit /deletevalue {globalsettings} advancedoptions >nul 2>&1
 bcdedit /deletevalue {globalsettings} optionsedit >nul 2>&1
 
@@ -116,27 +112,17 @@ bcdedit /deletevalue {current} bootlog >nul 2>&1
 echo    * BCD settings restored.
 
 :: =============================================
-:: SECTION 3: RESTORE USB/EXTERNAL BOOT
+:: SECTION 3: RESTORE WINDOWS SETUP
 :: =============================================
 echo.
-echo [3] Restoring External Boot Sources...
+echo [3] Restoring Windows Setup Execution...
 
-:: 3.1 Re-enable USB storage
-reg add "HKLM\SYSTEM\CurrentControlSet\Services\USBSTOR" /v Start /t REG_DWORD /d 3 /f >nul 2>&1
-echo    * USB Storage devices enabled.
-
-:: 3.2 Re-enable CD/DVD
-reg add "HKLM\SYSTEM\CurrentControlSet\Services\cdrom" /v Start /t REG_DWORD /d 1 /f >nul 2>&1
-echo    * CD/DVD devices enabled.
-
-:: 3.3 Remove Secure Boot restriction
-reg delete "HKLM\SYSTEM\CurrentControlSet\Control\SecureBoot" /v AvailableUpdates /f >nul 2>&1
-
-:: 3.4 Remove setup/oobe blocks
+:: 3.1 Remove setup/oobe blocks
 reg delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\setup.exe" /f >nul 2>&1
 reg delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\oobe.exe" /f >nul 2>&1
 
-echo    * External boot sources restored.
+echo    * Windows Setup unblocked.
+echo    * NOTE: USB/CD were never blocked by Lockdown v3.0
 
 :: =============================================
 :: SECTION 4: REMOVE ALL IFEO BLOCKS
@@ -232,12 +218,11 @@ echo [9] Restoring UI Visibility...
 reg delete "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" /v SettingsPageVisibility /f >nul 2>&1
 reg delete "HKU\.DEFAULT\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" /v SettingsPageVisibility /f >nul 2>&1
 reg delete "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer" /v SettingsPageVisibility /f >nul 2>&1
+ (system-level only)
+reg delete "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer" /v SettingsPageVisibility /f >nul 2>&1
 
 echo    * UI visibility restored.
-
-:: =============================================
-:: SECTION 10: REMOVE ADDITIONAL HARDENING
-:: =============================================
+echo    * NOTE: User-level restrictions -> Use UserUnlock.bat===============
 echo.
 echo [10] Removing Additional Restrictions...
 
@@ -287,31 +272,12 @@ echo    * Sleep/Hibernation restored.
 
 :: =============================================
 :: SECTION 12: RESTORE INTERNET ACCESS
+:: ============SKIP - Internet restrictions were not set by Lockdown v3.0
 :: =============================================
 echo.
-echo [12] Restoring Internet Access...
-
-:: 12.1 Re-enable Airplane Mode
-reg delete "HKLM\SOFTWARE\Microsoft\PolicyManager\current\device\Connectivity" /v AllowAirplaneMode /f >nul 2>&1
-reg delete "HKLM\SOFTWARE\Policies\Microsoft\Windows\Connectivity" /v AllowAirplaneMode /f >nul 2>&1
-echo    * Airplane Mode re-enabled.
-
-:: 12.2 Re-enable network adapter changes
-reg delete "HKLM\SOFTWARE\Policies\Microsoft\Windows\Network Connections" /v NC_LanChangeProperties /f >nul 2>&1
-reg delete "HKLM\SOFTWARE\Policies\Microsoft\Windows\Network Connections" /v NC_EnableAdminProhibits /f >nul 2>&1
-echo    * Network adapter can be disabled.
-
-:: 12.3 Unblock device control commands
-reg delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\devcon.exe" /f >nul 2>&1
-reg delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\pnputil.exe" /f >nul 2>&1
-echo    * Device control commands unblocked.
-
-:: 12.4 Remove auto-reconnect task
-schtasks /Delete /TN "NoWin_InternetGuard" /F >nul 2>&1
-echo    * Auto-reconnect task removed.
-
-echo    * Internet access fully restored.
-
+echo [12] SKIP - Internet access (never restricted by Lockdown v3.0)
+echo    * Use UserUnlock.bat if user-level restrictions exist.
+echo
 :: =============================================
 :: SECTION 13: RESTART EXPLORER
 :: =============================================
@@ -340,3 +306,18 @@ echo.
 echo NOTE: A reboot is recommended to fully apply changes.
 echo.
 if "%AUTO_YES%"=="1" (echo [AUTO] Unlock termine.) else (pause)
+3.0)
+echo ==========================================
+echo.
+echo Restored features:
+echo  [+] WinRE / Recovery Environment
+echo  [+] Safe Mode
+echo  [+] Advanced Startup Options (Shift+Restart)
+echo  [+] System Reset / Fresh Start
+echo  [+] System Restore / Shadow Copies
+echo  [+] Recovery Command Prompt
+echo  [+] DISM / SFC tools
+echo  [+] Sleep / Hibernation
+echo.
+echo NOTE: A reboot is recommended to fully apply changes.
+echo      User-level restrictions: Use UserUnlock.bat

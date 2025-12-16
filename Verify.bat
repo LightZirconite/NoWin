@@ -43,7 +43,7 @@ if %errorLevel% neq 0 (
 
 echo.
 echo ============================================================
-echo          VERIFICATION COMPLETE DU SYSTEME v2.4
+echo          VERIFICATION COMPLETE DU SYSTEME v3.0
 echo ============================================================
 echo.
 
@@ -85,9 +85,9 @@ echo    (0 = securise, >0 = permet acces menu boot)
 echo.
 
 :: =============================================
-:: SECTION 3: USB/EXTERNAL BOOT STATUS
+:: SECTION 3: USB/EXTERNAL BOOT (NOT BLOCKED BY LOCKDOWN v3.0)
 :: =============================================
-echo [3] BLOCAGE USB / BOOT EXTERNE :
+echo [3] BLOCAGE USB / BOOT EXTERNE (NON GERE PAR LOCKDOWN v3.0) :
 echo ------------------------------------------------------------
 echo    USB Storage (USBSTOR):
 reg query "HKLM\SYSTEM\CurrentControlSet\Services\USBSTOR" /v Start 2>nul | findstr "Start"
@@ -96,6 +96,9 @@ echo.
 echo    CD/DVD (cdrom):
 reg query "HKLM\SYSTEM\CurrentControlSet\Services\cdrom" /v Start 2>nul | findstr "Start"
 echo    (Start=4 -> BLOQUE, Start=1 -> ACTIF)
+echo.
+echo    NOTE: Lockdown v3.0 ne bloque plus USB/CD.
+echo          Utilisez UserLock si necessaire.
 echo.
 
 :: =============================================
@@ -366,9 +369,9 @@ powershell -NoProfile -Command "$a=Get-NetAdapter|Where{$_.Status -eq 'Up'}|Sele
 echo.
 
 :: =============================================
-:: SECTION 13: WIFI PROTECTION STATUS
+:: SECTION 13: WIFI PROTECTION (NOT HANDLED BY LOCKDOWN v3.0)
 :: =============================================
-echo [13] PROTECTION WIFI :
+echo [13] PROTECTION WIFI (NON GEREE PAR LOCKDOWN v3.0) :
 echo ------------------------------------------------------------
 
 :: Network Connections folder blocked
@@ -379,40 +382,9 @@ if %errorLevel% equ 0 (
     echo    * Dossier Connexions reseau   [!] ACCESSIBLE
 )
 
-:: Network tray icon
-reg query "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer" /v HideSCANetwork 2>nul >nul
-if %errorLevel% equ 0 (
-    echo    * Icone reseau barre taches   [OK] CACHE
-) else (
-    echo    * Icone reseau barre taches   [!] VISIBLE
-)
-
-:: Airplane mode disabled
-reg query "HKLM\SOFTWARE\Policies\Microsoft\Windows\Connectivity" /v AllowAirplaneMode 2>nul | findstr "0x0" >nul
-if %errorLevel% equ 0 (
-    echo    * Mode Avion                  [OK] DESACTIVE
-) else (
-    echo    * Mode Avion                  [!] DISPONIBLE
-)
-
-:: netsh blocked
-reg query "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\netsh.exe" /v Debugger 2>nul >nul
-if %errorLevel% equ 0 (
-    echo    * netsh.exe                   [OK] BLOQUE
-) else (
-    echo    * netsh.exe                   [!] ACCESSIBLE
-)
-
-:: Adapter changes restricted
-reg query "HKLM\SOFTWARE\Policies\Microsoft\Windows\Network Connections" /v NC_EnableAdminProhibits 2>nul >nul
-if %errorLevel% equ 0 (
-    echo    * Desactiver adaptateur       [OK] ADMIN REQUIS
-) else (
-    echo    * Desactiver adaptateur       [!] AUTORISE
-)
-
 echo.
-echo    NOTE: L'utilisateur peut CHANGER de WiFi mais pas se DECONNECTER.
+echo    NOTE: Lockdown v3.0 ne gere plus les restrictions WiFi.
+echo          Utilisez UserLock pour ces fonctionnalites.
 echo.
 
 :: =============================================
@@ -440,9 +412,9 @@ reg query "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\System" /v Di
 reg query "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" /v NoRun >nul 2>&1 && set /a USERLOCK_SCORE+=1
 reg query "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" /v NoDateTimeControlPanel >nul 2>&1 && set /a USERLOCK_SCORE+=1
 
-echo    LOCKDOWN Protection Score: %LOCKDOWN_SCORE%/5
+echo    LOCKDOWN Protection Score: %LOCKDOWN_SCORE%/5 (Focus: Reset prevention)
 if %LOCKDOWN_SCORE% GEQ 4 (
-    echo    -> SYSTEME BIEN PROTEGE
+    echo    -> SYSTEME BIEN PROTEGE contre la reinitialisation
 ) else if %LOCKDOWN_SCORE% GEQ 2 (
     echo    -> PROTECTION PARTIELLE
 ) else (

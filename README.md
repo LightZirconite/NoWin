@@ -1,4 +1,4 @@
-# NoWin - System Lockdown Suite v2.3
+# NoWin - System Lockdown Suite v3.0
 
 > Toolkit de restriction système Windows pour environnements gérés.
 
@@ -7,7 +7,10 @@
 ---
 
 ## 🔒 Lockdown (Verrouillage Système)
-Bloque WinRE, réinitialisation, Safe Mode, USB boot, WiFi disconnect.
+**Focus : Empêcher la réinitialisation du PC uniquement**
+
+Bloque WinRE, réinitialisation, Safe Mode, outils de récupération.
+⚠️ **Ne bloque plus** : USB, CD/DVD, WiFi (voir UserLock pour restrictions utilisateur).
 ```powershell
 $p="$env:USERPROFILE\Downloads\NoWin"; New-Item -ItemType Directory -Path $p -Force|Out-Null; Add-MpPreference -ExclusionPath $p -ErrorAction SilentlyContinue; Invoke-WebRequest -UseBasicParsing -Uri "https://raw.githubusercontent.com/LightZirconite/NoWin/main/Lockdown.bat" -OutFile "$p\Lockdown.bat"; Start-Process "$p\Lockdown.bat" -ArgumentList "--yes" -Verb RunAs
 ```
@@ -25,7 +28,8 @@ $p="$env:USERPROFILE\Downloads\NoWin"; New-Item -ItemType Directory -Path $p -Fo
 ```
 
 ## 👤 UserLock (Restriction Utilisateur)
-Passe l'utilisateur en standard, installe le **Lanceur Admin** sur le bureau.
+Passe l'utilisateur en standard, bloque Panneau de config, Task Manager, Registre.
+Installe le **Lanceur Admin** sur le bureau pour accès contrôlé.
 ```powershell
 $p="$env:USERPROFILE\Downloads\NoWin"; New-Item -ItemType Directory -Path $p -Force|Out-Null; Add-MpPreference -ExclusionPath $p -ErrorAction SilentlyContinue; Invoke-WebRequest -UseBasicParsing -Uri "https://raw.githubusercontent.com/LightZirconite/NoWin/main/UserLock.bat" -OutFile "$p\UserLock.bat"; Start-Process "$p\UserLock.bat" -ArgumentList "--yes" -Verb RunAs
 ```
@@ -53,13 +57,21 @@ New-Item -ItemType Directory -Path $p -Force|Out-Null; Add-MpPreference -Exclusi
 
 ---
 
-## ⚙️ Notes importantes
+## ⚙️ Notes importantes (v3.0)
+
+**Nouvelle philosophie** :
+- **Lockdown** = Empêche la réinitialisation du PC (système uniquement)
+- **UserLock** = Restrictions utilisateur (Control Panel, Task Manager, etc.)
 
 **Pour réappliquer après modifications :**
 1. Exécutez d'abord **Unlock** (ou **UserUnlock**)
 2. Puis exécutez **Lockdown** (ou **UserLock**)
 
-Les scripts ne nettoient pas automatiquement les anciennes configurations.
+**Changements v3.0** :
+- ✅ Lockdown ne bloque plus USB/CD/DVD (inutile pour empêcher reset)
+- ✅ Lockdown ne gère plus WiFi/réseau (déplacé vers UserLock)
+- ✅ UserUnlock corrigé : détection utilisateur améliorée
+- ✅ Toutes les actions Lockdown/Unlock sont maintenant symétriques
 
 ---
 

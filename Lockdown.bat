@@ -2,8 +2,8 @@
 chcp 65001 >nul 2>&1
 setlocal EnableDelayedExpansion
 :: ============================================
-:: LOCKDOWN.BAT - Ultimate System Recovery Blocker
-:: Version 2.3 - Enhanced WiFi Protection (cannot disconnect)
+:: LOCKDOWN.BAT - System Reset Prevention
+:: Version 3.0 - Focus: Block PC Reset Only
 :: ============================================
 
 :: Check for --yes argument (bypass confirmations)
@@ -42,10 +42,11 @@ if %errorLevel% neq 0 (
 )
 
 echo ==========================================
-echo     ULTIMATE SYSTEM LOCKDOWN v2.2
+echo     SYSTEM RESET LOCKDOWN v3.0
 echo ==========================================
 echo.
-echo NOTE: If downloaded via curl, run from an elevated prompt.
+echo Focus: Empecher la reinitialisation du PC
+echo Restrictions utilisateur: Voir UserLock.bat
 echo.
 
 :: =============================================
@@ -137,27 +138,17 @@ for /f "tokens=2 delims={}" %%G in ('bcdedit /enum all ^| findstr /i "recovery"'
 echo    * BCD fully hardened.
 
 :: =============================================
-:: SECTION 3: BLOCK USB/EXTERNAL BOOT
+:: SECTION 3: BLOCK WINDOWS SETUP (ONLY)
 :: =============================================
 echo.
-echo [3] Blocking External Boot Sources...
+echo [3] Blocking Windows Setup Execution...
 
-:: 3.1 Disable USB boot devices via registry
-reg add "HKLM\SYSTEM\CurrentControlSet\Services\USBSTOR" /v Start /t REG_DWORD /d 4 /f >nul 2>&1
-echo    * USB Storage devices disabled.
-
-:: 3.2 Block CD/DVD boot
-reg add "HKLM\SYSTEM\CurrentControlSet\Services\cdrom" /v Start /t REG_DWORD /d 4 /f >nul 2>&1
-echo    * CD/DVD devices disabled.
-
-:: 3.3 Disable Secure Boot configuration access (prevents changes)
-reg add "HKLM\SYSTEM\CurrentControlSet\Control\SecureBoot" /v AvailableUpdates /t REG_DWORD /d 0 /f >nul 2>&1
-
-:: 3.4 Disable Windows Setup from running
+:: 3.1 Disable Windows Setup from running (prevents reinstall via setup.exe)
 reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\setup.exe" /v Debugger /t REG_SZ /d "cmd.exe /c echo SETUP BLOCKED ^& pause" /f >nul 2>&1
 reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\oobe.exe" /v Debugger /t REG_SZ /d "cmd.exe /c echo OOBE BLOCKED ^& pause" /f >nul 2>&1
 
-echo    * External boot sources blocked.
+echo    * Windows Setup blocked.
+echo    * NOTE: USB/CD devices NOT blocked (use UserLock for that)
 
 :: =============================================
 :: SECTION 4: IFEO - BLOCK ALL RECOVERY EXECUTABLES
@@ -274,22 +265,16 @@ reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" /v Disa
 echo    * Recovery command prompt blocked.
 
 :: =============================================
-:: SECTION 9: HIDE ALL RECOVERY UI
+:: SECTION 9: HIDE RECOVERY UI (SYSTEM-LEVEL ONLY)
 :: =============================================
 echo.
 echo [9] Hiding Recovery UI Elements...
 
-:: 9.1 Hide Settings pages
-reg delete "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" /v NoControlPanel /f >nul 2>&1
-reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" /v SettingsPageVisibility /t REG_SZ /d "hide:recovery;backup;windowsupdate-options;windowsupdate-restartoptions;troubleshoot" /f >nul 2>&1
-
-:: 9.2 Hide for all users (Default profile)
-reg add "HKU\.DEFAULT\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" /v SettingsPageVisibility /t REG_SZ /d "hide:recovery;backup;windowsupdate-options;windowsupdate-restartoptions;troubleshoot" /f >nul 2>&1
-
-:: 9.3 Block Troubleshooters
+:: 9.1 Hide Settings pages (System-wide, not per-user)
 reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer" /v SettingsPageVisibility /t REG_SZ /d "hide:recovery;backup;troubleshoot" /f >nul 2>&1
 
-echo    * Recovery UI completely hidden.
+echo    * Recovery pages hidden system-wide.
+echo    * NOTE: Control Panel restrictions -> Use UserLock.bat
 
 :: =============================================
 :: SECTION 10: ADDITIONAL HARDENING
@@ -384,48 +369,24 @@ echo.
 echo [13] Internet Priority Protection...
 
 :: 13.1 Disable Airplane Mode (prevents complete disconnect)
-reg add "HKLM\SOFTWARE\Microsoft\PolicyManager\current\device\Connectivity" /v AllowAirplaneMode /t REG_DWORD /d 0 /f >nul 2>&1
-reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\Connectivity" /v AllowAirplaneMode /t REG_DWORD /d 0 /f >nul 2>&1
-echo    * Airplane Mode disabled.
-
-:: 13.2 Block network adapter disable (prevent turning WiFi off)
-reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\Network Connections" /v NC_LanChangeProperties /t REG_DWORD /d 0 /f >nul 2>&1
-reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\Network Connections" /v NC_EnableAdminProhibits /t REG_DWORD /d 1 /f >nul 2>&1
-echo    * WiFi adapter cannot be disabled.
-
-:: 13.3 Keep WLAN AutoConfig service always running
-powershell -NoProfile -Command "$svc = Get-Service -Name 'WlanSvc' -ErrorAction SilentlyContinue; if($svc) { Set-Service -Name 'WlanSvc' -StartupType Automatic -ErrorAction SilentlyContinue; Start-Service -Name 'WlanSvc' -ErrorAction SilentlyContinue }" >nul 2>&1
-
-:: 13.4 Block device manager tools (prevent adapter disable)
-reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\devcon.exe" /v Debugger /t REG_SZ /d "cmd.exe /c echo DEVCON BLOCKED ^& exit" /f >nul 2>&1
-reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\pnputil.exe" /v Debugger /t REG_SZ /d "cmd.exe /c echo PNPUTIL BLOCKED - Admin required ^& exit" /f >nul 2>&1
-echo    * Device control commands blocked.
-
-:: 13.5 Auto-reconnect task: Check internet every 30 seconds
-echo    * Creating auto-reconnect task...
-powershell -NoProfile -WindowStyle Hidden -Command "& {$action = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument '-NoProfile -WindowStyle Hidden -Command \"& { try { $ping = Test-Connection -ComputerName 8.8.8.8 -Count 1 -Quiet -ErrorAction Stop; if (-not $ping) { netsh wlan connect name=(netsh wlan show interfaces | Select-String ''SSID'' | ForEach-Object { $_.ToString().Split('':'')[1].Trim() }) } } catch {} }\"'; $trigger = New-ScheduledTaskTrigger -Once -At (Get-Date) -RepetitionInterval (New-TimeSpan -Minutes 1); $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit (New-TimeSpan -Minutes 1); Register-ScheduledTask -TaskName 'NoWin_InternetGuard' -Action $action -Trigger $trigger -Settings $settings -User 'SYSTEM' -Force | Out-Null}" >nul 2>&1
-echo    * Auto-reconnect task created (checks every 1 min).
-
-echo.
-echo    * Internet priority enabled.
-echo    * User CAN change WiFi network but CANNOT turn WiFi OFF.
-
+reg add "HKLM\SREMOVED - Internet restrictions moved to UserLock
 :: =============================================
-:: SECTION 14: RESTART EXPLORER
-:: =============================================
+:: WiFi, network, and adapter restrictions are USER-LEVEL concerns
+:: Use UserLock.bat for these features
 echo.
-echo [14] Restarting Explorer to apply changes...
+echo [13] SKIP - Internet restrictions (use UserLock.bat)
+echo    * Lockdown focuses ONLY on system reset prevention.
+echo
 taskkill /F /IM explorer.exe >nul 2>&1
 start explorer.exe
 
 echo.
 echo ==========================================
-echo       LOCKDOWN COMPLETE (v2.2)
+echo       LOCKDOWN COMPLETE (v3.0)
 echo ==========================================
 echo.
 echo Protected against:
 echo  [X] WinRE / Recovery Environment
-echo  [X] USB Boot / External Media
 echo  [X] Safe Mode
 echo  [X] Advanced Startup Options (Shift+Restart)
 echo  [X] System Reset / Fresh Start
@@ -434,7 +395,12 @@ echo  [X] Recovery Command Prompt
 echo  [X] DISM / SFC recovery tools
 echo  [X] Sleep / Hibernation DISABLED
 echo  [X] Wake-on-LAN ENABLED
-echo  [X] WiFi Disconnect BLOCKED (can still change networks)
+echo.
+echo NOT Blocked (use UserLock for these):
+echo  [ ] USB / CD/DVD devices
+echo  [ ] WiFi disconnect
+echo  [ ] Control Panel
+echo  [ ] Settings app
 echo.
 echo NOTE: BIOS/UEFI access requires physical security
 echo       (BIOS password must be set manually)

@@ -78,33 +78,25 @@ echo.
 echo Detection de l'utilisateur a restaurer...
 echo.
 
-:: Method 1: Get current logged-in user from explorer.exe owner
+:: Method 1: Get ALL standard users (not admins)
 set "TARGET_USER="
-for /f "usebackq tokens=*" %%u in (`powershell -NoProfile -Command "(Get-WmiObject Win32_Process -Filter 'Name=''explorer.exe''' -ErrorAction SilentlyContinue | Select-Object -First 1).GetOwner().User"`) do (
-    set "TARGET_USER=%%u"
+set "FOUND_USERS=0"
+
+for /f "usebackq tokens=*" %%u in (`powershell -NoProfile -Command "Get-LocalUser | Where-Object {$_.Enabled -eq $true -and $_.Name -notmatch '^(Administrator|Administrateur|Guest|DefaultAccount|WDAGUtilityAccount|Support)$'} | ForEach-Object { $user = $_.Name; $isAdmin = (Get-LocalGroupMember -Group '!ADMIN_GROUP!' -ErrorAction SilentlyContinue | Where-Object { $_.Name -like '*\' + $user }).Count -gt 0; if(-not $isAdmin) { $user } }"`) do (
+    if not defined TARGET_USER set "TARGET_USER=%%u"
+    set /a FOUND_USERS+=1
 )
 
-:: Filter out admin accounts
-if /i "!TARGET_USER!"=="Administrator" set "TARGET_USER="
-if /i "!TARGET_USER!"=="Administrateur" set "TARGET_USER="
-
-:: Method 2: If no explorer or admin, get first enabled non-system local user
+:: Fallback: If ALL users are admins, pick first non-system user anyway
 if not defined TARGET_USER (
     for /f "usebackq tokens=*" %%u in (`powershell -NoProfile -Command "Get-LocalUser | Where-Object {$_.Enabled -eq $true -and $_.Name -notmatch '^(Administrator|Administrateur|Guest|DefaultAccount|WDAGUtilityAccount|Support)$'} | Select-Object -First 1 -ExpandProperty Name"`) do (
         set "TARGET_USER=%%u"
     )
 )
 
-:: Final fallback: use current user if not Administrator
-if not defined TARGET_USER (
-    if /i not "%USERNAME%"=="Administrator" (
-        set "TARGET_USER=%USERNAME%"
-    )
-)
-
 if not defined TARGET_USER (
     echo [ERREUR] Aucun utilisateur a restaurer trouve.
-    echo Tous les utilisateurs semblent deja etre administrateurs.
+    echo Seuls des comptes systeme existent (Administrator, Guest, etc.).
     if "%AUTO_YES%"=="1" (timeout /t 2 /nobreak >nul) else (pause)
     exit /b
 )
@@ -117,6 +109,15 @@ for /f "usebackq tokens=*" %%s in (`powershell -NoProfile -Command "(Get-LocalUs
 
 echo Utilisateur detecte: [!TARGET_USER!]
 if defined TARGET_SID echo    * SID: !TARGET_SID!
+
+:: Check if user is already admin
+net localgroup "!ADMIN_GROUP!" 2>nul | findstr /i /c:"!TARGET_USER!" >nul
+if %errorLevel% equ 0 (
+    echo    * Statut: Deja ADMINISTRATEUR
+) else (
+    echo    * Statut: Utilisateur standard
+)
+
 echo.
 echo Ce script va:
 echo  1. Supprimer TOUTES les restrictions de [!TARGET_USER!]
@@ -444,7 +445,7 @@ if exist "%NOWIN_DIR%" (
 :: =============================================
 echo.
 echo ==========================================
-echo     USER UNLOCK TERMINE (v2.4)
+echo     USER UNLOCK TERMINE (v3.0)
 echo ==========================================
 echo.
 echo Utilisateur [!TARGET_USER!] entierement restaure:

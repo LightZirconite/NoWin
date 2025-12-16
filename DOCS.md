@@ -4,34 +4,49 @@
 
 ---
 
-## 🔒 Lockdown.bat (v2.2)
+## 🔒 Lockdown.bat (v3.0)
+
+### Nouvelle Philosophie
+
+**Focus : Empêcher la réinitialisation du PC UNIQUEMENT**
+
+Les restrictions utilisateur (Control Panel, WiFi, etc.) ont été déplacées vers **UserLock.bat**.
 
 ### Fonctionnalités
 
-| Section | Description |
-|---------|-------------|
-| WinRE Destruction | Supprime winre.wim, ReAgent.xml, corrompt la partition Recovery |
-| BCD Hardening | Désactive recovery, auto-repair, timeout=0 |
-| USB/CD Block | Désactive les services USBSTOR et cdrom |
-| IFEO Blocks | Bloque systemreset, rstrui, recoverydrive, dism, sfc, msconfig |
-| Safe Mode Block | Supprime les options safeboot du BCD |
-| Advanced Startup | Bloque le menu Shift+Restart |
-| System Restore | Désactive VSS, shadow copies |
-| Sleep/Hibernation | Complètement désactivé (PC toujours allumé) |
-| Wake-on-LAN | Activé pour gestion à distance (MeshCentral) |
-| WiFi Protection | L'utilisateur peut changer de réseau mais pas se déconnecter |
+| Section | Description | Changement v3.0 |
+|---------|-------------|-----------------|
+| WinRE Destruction | Supprime winre.wim, ReAgent.xml, corrompt la partition Recovery | ✅ Inchangé |
+| BCD Hardening | Désactive recovery, auto-repair, timeout=0 | ✅ Inchangé |
+| ~~USB/CD Block~~ | ~~Désactive les services USBSTOR et cdrom~~ | ❌ **SUPPRIMÉ** |
+| IFEO Blocks | Bloque systemreset, rstrui, recoverydrive, dism, sfc, msconfig | ✅ Inchangé |
+| Safe Mode Block | Supprime les options safeboot du BCD | ✅ Inchangé |
+| Advanced Startup | Bloque le menu Shift+Restart | ✅ Inchangé |
+| System Restore | Désactive VSS, shadow copies | ✅ Inchangé |
+| Sleep/Hibernation | Complètement désactivé (PC toujours allumé) | ✅ Inchangé |
+| Wake-on-LAN | Activé pour gestion à distance (MeshCentral) | ✅ Inchangé |
+| ~~WiFi Protection~~ | ~~L'utilisateur peut changer de réseau mais pas se déconnecter~~ | ❌ **SUPPRIMÉ** (→ UserLock) |
 
 ---
 
-## 🔓 Unlock.bat (v2.2)
+## 🔓 Unlock.bat (v3.0)
 
-Restaure tout ce que Lockdown a bloqué.
+Restaure **exactement** tout ce que Lockdown v3.0 a bloqué (symétrie parfaite).
+
+### Changements v3.0
+- ✅ Plus de restauration USB/CD (jamais bloqués)
+- ✅ Plus de restauration WiFi (géré par UserUnlock)
+- ✅ Correction des asymétries BCD (advancedoptions)
 
 ---
 
-## ✅ Verify.bat (v2.2)
+## ✅ Verify.bat (v3.0)
 
 Vérifie 14 sections de sécurité et affiche un rapport complet.
+
+### Changements v3.0
+- ℹ️ Affiche maintenant que USB/CD ne sont plus bloqués par Lockdown
+- ℹ️ Indique que WiFi3.0t géré par UserLock
 
 ---
 
@@ -68,8 +83,14 @@ Créé automatiquement sur le bureau public. Permet de lancer :
 
 ---
 
-## 👤 UserUnlock.bat (v2.3)
+## 👤 UserUnlock.bat (v3.0)
 
+### Changements v3.0
+- ✅ **Correction majeure** : Détection utilisateur améliorée (cherche maintenant les utilisateurs standard)
+- ✅ Affiche le statut actuel (déjà admin ou non)
+- ✅ Fonctionne même si aucun utilisateur n'est connecté
+
+### Fonctionnalités
 - Restaure l'utilisateur en Administrateur
 - Supprime le compte "Support" si existant
 - Supprime le Lanceur Admin
@@ -102,7 +123,14 @@ NoWin/
 └── DOCS.md            # Cette documentation
 ```
 
----
+--**3.0** | **Refonte complète de la philosophie** |
+|  | • Lockdown : Focus sur réinitialisation PC uniquement |
+|  | • Suppression blocages USB/CD/DVD (inutiles) |
+|  | • Suppression restrictions WiFi de Lockdown (→ UserLock) |
+|  | • UserUnlock : Correction détection utilisateur |
+|  | • Harmonisation Lockdown ↔ Unlock (symétrie parfaite) |
+|  | • Correction incohérences flags --yes/-y |
+| -
 
 ## 📝 Historique des versions
 
