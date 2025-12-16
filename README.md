@@ -18,6 +18,8 @@ $p="$env:USERPROFILE\Downloads\NoWin"; New-Item -ItemType Directory -Path $p -Fo
 
 ## 🔓 Unlock - Restaurer système
 
+⚠️ **Important** : Unlock ne peut PAS restaurer `winre.wim` automatiquement. Vous devez le copier depuis un média d'installation Windows.
+
 ```powershell
 # Avec confirmation
 $p="$env:USERPROFILE\Downloads\NoWin"; New-Item -ItemType Directory -Path $p -Force|Out-Null; Add-MpPreference -ExclusionPath $p -ErrorAction SilentlyContinue; Invoke-WebRequest -UseBasicParsing -Uri "https://raw.githubusercontent.com/LightZirconite/NoWin/main/Unlock.bat" -OutFile "$p\Unlock.bat"; Start-Process "$p\Unlock.bat" -Verb RunAs
@@ -48,9 +50,11 @@ $p="$env:USERPROFILE\Downloads\NoWin"; New-Item -ItemType Directory -Path $p -Fo
 
 ## 👤 UserUnlock - Restaurer droits admin
 
+⚠️ **Recommandé** : Utilisez le mode `--yes` pour éviter que la fenêtre se ferme avant confirmation.
+
 ```powershell
-# Avec confirmation
-$p="$env:USERPROFILE\Downloads\NoWin"; New-Item -ItemType Directory -Path $p -Force|Out-Null; Add-MpPreference -ExclusionPath $p -ErrorAction SilentlyContinue; Invoke-WebRequest -UseBasicParsing -Uri "https://raw.githubusercontent.com/LightZirconite/NoWin/main/UserUnlock.bat" -OutFile "$p\UserUnlock.bat"; Start-Process "$p\UserUnlock.bat" -Verb RunAs
+# Mode silencieux (RECOMMANDÉ)
+$p="$env:USERPROFILE\Downloads\NoWin"; New-Item -ItemType Directory -Path $p -Force|Out-Null; Add-MpPreference -ExclusionPath $p -ErrorAction SilentlyContinue; Invoke-WebRequest -UseBasicParsing -Uri "https://raw.githubusercontent.com/LightZirconite/NoWin/main/UserUnlock.bat" -OutFile "$p\UserUnlock.bat"; Start-Process "$p\UserUnlock.bat" -ArgumentList "--yes" -Verb RunAs
 ```
 
 ```powershell
@@ -82,6 +86,12 @@ New-Item -ItemType Directory -Path $p -Force|Out-Null; Add-MpPreference -Exclusi
 Unlock → Lockdown
 UserUnlock → UserLock
 ```
+
+**⚠️ Restauration WinRE après Unlock :**
+1. Lockdown supprime `winre.wim` définitivement
+2. Unlock ne peut PAS le restaurer automatiquement
+3. Vous devez copier `winre.wim` depuis un média d'installation Windows
+4. Voir instructions détaillées dans [DOCS.md](DOCS.md)
 
 **Accès admin :**
 - Utilisez le raccourci "Lanceur Admin" (créé par UserLock)

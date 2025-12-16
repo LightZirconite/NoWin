@@ -21,6 +21,15 @@ echo   3. Supprimer raccourci bureau
 echo.
 echo ==========================================
 echo.
+choice /c on /n /m "Continuer? (o/n): "
+if errorlevel 2 (
+    echo.
+    echo [ANNULE] Operation annulee par l'utilisateur.
+    echo.
+    pause
+    exit /b 1
+)
+echo.
 
 :: Check for admin rights
 net session >nul 2>&1

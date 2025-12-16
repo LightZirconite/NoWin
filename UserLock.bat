@@ -45,6 +45,20 @@ echo     USER PRIVILEGE LOCKDOWN v3.0
 echo ==========================================
 echo.
 
+if "%AUTO_YES%"=="1" goto confirm_done
+echo ==========================================
+echo.
+choice /c on /n /m "Continuer? (o/n): "
+if errorlevel 2 (
+    echo.
+    echo [ANNULE] Operation annulee par l'utilisateur.
+    echo.
+    pause
+    exit /b 1
+)
+echo.
+:confirm_done
+
 :: =============================================
 :: SECTION 0: DETECT GROUP NAMES (Language-Independent)
 :: =============================================

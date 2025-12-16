@@ -45,6 +45,20 @@ echo     USER PRIVILEGE RESTORE v2.5
 echo ==========================================
 echo.
 
+if "%AUTO_YES%"=="1" goto confirm_done
+echo ==========================================
+echo.
+choice /c on /n /m "Continuer? (o/n): "
+if errorlevel 2 (
+    echo.
+    echo [ANNULE] Operation annulee par l'utilisateur.
+    echo.
+    pause
+    exit /b 1
+)
+echo.
+:confirm_done
+
 :: =============================================
 :: SECTION 0: DETECT GROUP NAMES (Language-Independent)
 :: =============================================
@@ -463,9 +477,17 @@ echo  [-] Lanceur Admin supprime
 echo  [+] Bureau a distance
 echo  [+] Administrator visible sur ecran connexion
 echo.
-echo Deconnexion dans 5 secondes...
-timeout /t 5
-shutdown /l
+if "%AUTO_YES%"=="1" (
+    echo.
+    echo [AUTO] Deconnexion dans 5 secondes...
+    timeout /t 5 /nobreak >nul
+    shutdown /l
+) else (
+    echo.
+    echo Appuyez sur une touche pour vous deconnecter...
+    pause >nul
+    shutdown /l
+)
 
 :CONFIRM_AGAIN
 echo.

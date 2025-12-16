@@ -45,10 +45,39 @@ echo     SYSTEM UNLOCK v3.0
 echo ==========================================
 echo.
 
+if "%AUTO_YES%"=="1" goto confirm_done
+echo ==========================================
+echo.
+choice /c on /n /m "Continuer? (o/n): "
+if errorlevel 2 (
+    echo.
+    echo [ANNULE] Operation annulee par l'utilisateur.
+    echo.
+    pause
+    exit /b 1
+)
+echo.
+:confirm_done
+
 :: =============================================
-:: SECTION 1: RESTORE WINRE
+:: SECTION 1: RESTORE WINRE (MANUAL REQUIRED)
 :: =============================================
 echo [1] Restoring WinRE (Recovery Environment)...
+echo.
+echo    [!] IMPORTANT: Lockdown a supprime winre.wim
+echo.
+echo    Pour reactiver WinRE completement :
+echo    1. Copiez winre.wim depuis un media d'installation Windows
+echo    2. Source: install.wim\Windows\System32\Recovery\winre.wim
+echo    3. Destination: C:\Windows\System32\Recovery\winre.wim
+echo    4. Puis executez: reagentc /setreimage /path C:\Windows\System32\Recovery
+echo    5. Et: reagentc /enable
+echo.
+echo    Ou utilisez DISM pour extraire winre.wim :
+echo    dism /mount-wim /wimfile:install.wim /index:1 /mountdir:C:\mount
+echo    copy C:\mount\Windows\System32\Recovery\winre.wim C:\Windows\System32\Recovery\
+echo    dism /unmount-wim /mountdir:C:\mount /discard
+echo.
 
 set "WINRE_TARGET=C:\Windows\System32\Recovery\winre.wim"
 set "WINRE_SOURCE=%~dp0winre.wim"
@@ -56,24 +85,31 @@ set "WINRE_SOURCE=%~dp0winre.wim"
 :: Create Recovery directory if missing
 if not exist "C:\Windows\System32\Recovery" mkdir "C:\Windows\System32\Recovery" >nul 2>&1
 
-:: Restore winre.wim if available
+:: Restore winre.wim if available locally
 if not exist "%WINRE_TARGET%" (
     if exist "%WINRE_SOURCE%" (
         echo    * Restoring winre.wim from script directory...
         copy /y "%WINRE_SOURCE%" "%WINRE_TARGET%" >nul
-        if %errorLevel% equ 0 (echo       -> winre.wim restored.) else (echo       -> Failed to copy winre.wim.)
+        if %errorLevel% equ 0 (
+            echo       -> winre.wim restored.
+            reagentc /setreimage /path C:\Windows\System32\Recovery >nul 2>&1
+            reagentc /enable >nul 2>&1
+            if %errorLevel% equ 0 (echo       -> WinRE enabled!) else (echo       -> Enable failed.)
+        ) else (
+            echo       -> Failed to copy winre.wim.
+        )
     ) else (
-        echo    * WARNING: winre.wim not found.
-        echo      To fully restore WinRE, place a valid winre.wim next to this script.
-        echo      Source: Windows install media - sources\install.wim\Windows\System32\Recovery\winre.wim
+        echo    * [!] winre.wim NOT FOUND - WinRE cannot be enabled.
+        echo    * Place winre.wim next to this script and re-run.
     )
+) else (
+    echo    * winre.wim already exists.
+    reagentc /setreimage /path C:\Windows\System32\Recovery >nul 2>&1
+    reagentc /enable >nul 2>&1
+    if %errorLevel% equ 0 (echo    * WinRE enabled.) else (echo    * WinRE enable failed.)
 )
 
-:: Enable WinRE
-reagentc /enable >nul 2>&1
-if %errorLevel% equ 0 (echo    * WinRE enabled via reagentc.) else (echo    * WinRE enable failed - image may be missing.)
-
-echo    * WinRE restoration complete.
+echo    * WinRE restoration process complete.
 
 :: =============================================
 :: SECTION 2: RESTORE BCD SETTINGS
