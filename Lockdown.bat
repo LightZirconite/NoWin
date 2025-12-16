@@ -9,7 +9,6 @@ setlocal EnableDelayedExpansion
 :: Check for --yes argument (bypass confirmations)
 set "AUTO_YES=0"
 if /i "%~1"=="--yes" set "AUTO_YES=1"
-if /i "%~1"=="-y" set "AUTO_YES=1"
 
 :: Check for Administrator privileges
 net session >nul 2>&1
@@ -79,6 +78,19 @@ if exist "C:\Recovery" (
     rd /s /q "C:\Recovery" >nul 2>&1
 )
 
+:: 1.3b Check ALL partitions for winre.wim (including hidden)
+echo    * Scanning all partitions for winre.wim...
+for %%d in (C D E F G H I J K L M N O P Q R S T U V W X Y Z) do (
+    if exist "%%d:\Recovery\WindowsRE\winre.wim" (
+        echo      -> Found on %%d:\
+        takeown /f "%%d:\Recovery" /r /d y >nul 2>&1
+        icacls "%%d:\Recovery" /grant administrators:F /t >nul 2>&1
+        attrib -h -s -r "%%d:\Recovery\WindowsRE\winre.wim" >nul 2>&1
+        del /f /q "%%d:\Recovery\WindowsRE\winre.wim" >nul 2>&1
+        rd /s /q "%%d:\Recovery" >nul 2>&1
+    )
+)
+
 :: 1.4 Remove ReAgent configuration files
 for %%F in ("C:\Windows\System32\Recovery\ReAgent.xml" "C:\Recovery\WindowsRE\ReAgent.xml") do (
     if exist "%%F" (
@@ -93,7 +105,7 @@ for %%F in ("C:\Windows\System32\Recovery\ReAgent.xml" "C:\Recovery\WindowsRE\Re
 echo    * Checking for Recovery partition...
 powershell -NoProfile -Command "$rp = Get-Partition | Where-Object {$_.Type -eq 'Recovery'}; if($rp) { $rp | Set-Partition -GptType '{ebd0a0a2-b9e5-4433-87c0-68b6b72699c7}' -ErrorAction SilentlyContinue; Write-Host '      -> Recovery partition type modified' } else { Write-Host '      -> No Recovery partition found' }"
 
-echo    * WinRE destruction complete.
+echo    * WinRE destruction complete (all partitions scanned).
 
 :: =============================================
 :: SECTION 2: ADVANCED BCD HARDENING
@@ -135,7 +147,15 @@ for /f "tokens=2 delims={}" %%G in ('bcdedit /enum all ^| findstr /i "recovery"'
     bcdedit /delete {%%G} /f >nul 2>&1
 )
 
+:: 2.9 CRITICAL: Block Shift+Restart recovery access
+bcdedit /set {globalsettings} advancedoptions false >nul 2>&1
+bcdedit /set {globalsettings} optionsedit false >nul 2>&1
+
+:: 2.10 Prevent boot to recovery via Shift key intercept
+reg add "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Configuration Manager" /v DisableStartupRepair /t REG_DWORD /d 1 /f >nul 2>&1
+
 echo    * BCD fully hardened.
+echo    * Shift+Restart recovery access BLOCKED.
 
 :: =============================================
 :: SECTION 3: BLOCK WINDOWS SETUP (ONLY)

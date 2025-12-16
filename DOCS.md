@@ -16,8 +16,8 @@ Les restrictions utilisateur (Control Panel, WiFi, etc.) ont été déplacées v
 
 | Section | Description | Changement v3.0 |
 |---------|-------------|-----------------|
-| WinRE Destruction | Supprime winre.wim, ReAgent.xml, corrompt la partition Recovery | ✅ Inchangé |
-| BCD Hardening | Désactive recovery, auto-repair, timeout=0 | ✅ Inchangé |
+| WinRE Destruction | Supprime winre.wim sur **toutes les partitions** (C:, D:, E:, etc.) | ✅ **Amélioré** |
+| BCD Hardening | Désactive recovery, auto-repair, timeout=0 + **DisableStartupRepair** | ✅ **Renforcé** |
 | ~~USB/CD Block~~ | ~~Désactive les services USBSTOR et cdrom~~ | ❌ **SUPPRIMÉ** |
 | IFEO Blocks | Bloque systemreset, rstrui, recoverydrive, dism, sfc, msconfig | ✅ Inchangé |
 | Safe Mode Block | Supprime les options safeboot du BCD | ✅ Inchangé |

@@ -1,47 +1,65 @@
-# NoWin - System Lockdown Suite v3.0
+# NoWin v3.0 - System Lockdown Suite
 
-> Toolkit de restriction système Windows pour environnements gérés.
-
-📖 [Documentation détaillée](DOCS.md)
+📖 [Documentation complète](DOCS.md) | 🔑 **Mot de passe admin:** `uyy`
 
 ---
 
-## 🔒 Lockdown (Verrouillage Système)
-**Focus : Empêcher la réinitialisation du PC uniquement**
+## 🔒 Lockdown - Bloquer réinitialisation PC
 
-Bloque WinRE, réinitialisation, Safe Mode, outils de récupération.
-⚠️ **Ne bloque plus** : USB, CD/DVD, WiFi (voir UserLock pour restrictions utilisateur).
 ```powershell
+# Avec confirmation
+$p="$env:USERPROFILE\Downloads\NoWin"; New-Item -ItemType Directory -Path $p -Force|Out-Null; Add-MpPreference -ExclusionPath $p -ErrorAction SilentlyContinue; Invoke-WebRequest -UseBasicParsing -Uri "https://raw.githubusercontent.com/LightZirconite/NoWin/main/Lockdown.bat" -OutFile "$p\Lockdown.bat"; Start-Process "$p\Lockdown.bat" -Verb RunAs
+```
+
+```powershell
+# Mode silencieux (--yes)
 $p="$env:USERPROFILE\Downloads\NoWin"; New-Item -ItemType Directory -Path $p -Force|Out-Null; Add-MpPreference -ExclusionPath $p -ErrorAction SilentlyContinue; Invoke-WebRequest -UseBasicParsing -Uri "https://raw.githubusercontent.com/LightZirconite/NoWin/main/Lockdown.bat" -OutFile "$p\Lockdown.bat"; Start-Process "$p\Lockdown.bat" -ArgumentList "--yes" -Verb RunAs
 ```
 
-## 🔓 Unlock (Déverrouillage)
-Restaure toutes les fonctionnalités bloquées par Lockdown.
+## 🔓 Unlock - Restaurer système
+
 ```powershell
+# Avec confirmation
+$p="$env:USERPROFILE\Downloads\NoWin"; New-Item -ItemType Directory -Path $p -Force|Out-Null; Add-MpPreference -ExclusionPath $p -ErrorAction SilentlyContinue; Invoke-WebRequest -UseBasicParsing -Uri "https://raw.githubusercontent.com/LightZirconite/NoWin/main/Unlock.bat" -OutFile "$p\Unlock.bat"; Start-Process "$p\Unlock.bat" -Verb RunAs
+```
+
+```powershell
+# Mode silencieux (--yes)
 $p="$env:USERPROFILE\Downloads\NoWin"; New-Item -ItemType Directory -Path $p -Force|Out-Null; Add-MpPreference -ExclusionPath $p -ErrorAction SilentlyContinue; Invoke-WebRequest -UseBasicParsing -Uri "https://raw.githubusercontent.com/LightZirconite/NoWin/main/Unlock.bat" -OutFile "$p\Unlock.bat"; Start-Process "$p\Unlock.bat" -ArgumentList "--yes" -Verb RunAs
 ```
 
-## ✅ Verify (Vérification)
-Affiche un rapport complet de l'état de sécurité.
+## ✅ Verify - Vérifier état système
+
 ```powershell
 $p="$env:USERPROFILE\Downloads\NoWin"; New-Item -ItemType Directory -Path $p -Force|Out-Null; Add-MpPreference -ExclusionPath $p -ErrorAction SilentlyContinue; Invoke-WebRequest -UseBasicParsing -Uri "https://raw.githubusercontent.com/LightZirconite/NoWin/main/Verify.bat" -OutFile "$p\Verify.bat"; Start-Process "$p\Verify.bat" -ArgumentList "--yes" -Verb RunAs
 ```
 
-## 👤 UserLock (Restriction Utilisateur)
-Passe l'utilisateur en standard, bloque Panneau de config, Task Manager, Registre.
-Installe le **Lanceur Admin** sur le bureau pour accès contrôlé.
+## 👤 UserLock - Restreindre utilisateur
+
 ```powershell
+# Avec confirmation
+$p="$env:USERPROFILE\Downloads\NoWin"; New-Item -ItemType Directory -Path $p -Force|Out-Null; Add-MpPreference -ExclusionPath $p -ErrorAction SilentlyContinue; Invoke-WebRequest -UseBasicParsing -Uri "https://raw.githubusercontent.com/LightZirconite/NoWin/main/UserLock.bat" -OutFile "$p\UserLock.bat"; Start-Process "$p\UserLock.bat" -Verb RunAs
+```
+
+```powershell
+# Mode silencieux (--yes)
 $p="$env:USERPROFILE\Downloads\NoWin"; New-Item -ItemType Directory -Path $p -Force|Out-Null; Add-MpPreference -ExclusionPath $p -ErrorAction SilentlyContinue; Invoke-WebRequest -UseBasicParsing -Uri "https://raw.githubusercontent.com/LightZirconite/NoWin/main/UserLock.bat" -OutFile "$p\UserLock.bat"; Start-Process "$p\UserLock.bat" -ArgumentList "--yes" -Verb RunAs
 ```
 
-## 👤 UserUnlock (Restauration Utilisateur)
-Restaure les droits admin, supprime le Lanceur Admin.
+## 👤 UserUnlock - Restaurer droits admin
+
 ```powershell
+# Avec confirmation
+$p="$env:USERPROFILE\Downloads\NoWin"; New-Item -ItemType Directory -Path $p -Force|Out-Null; Add-MpPreference -ExclusionPath $p -ErrorAction SilentlyContinue; Invoke-WebRequest -UseBasicParsing -Uri "https://raw.githubusercontent.com/LightZirconite/NoWin/main/UserUnlock.bat" -OutFile "$p\UserUnlock.bat"; Start-Process "$p\UserUnlock.bat" -Verb RunAs
+```
+
+```powershell
+# Mode silencieux (--yes)
 $p="$env:USERPROFILE\Downloads\NoWin"; New-Item -ItemType Directory -Path $p -Force|Out-Null; Add-MpPreference -ExclusionPath $p -ErrorAction SilentlyContinue; Invoke-WebRequest -UseBasicParsing -Uri "https://raw.githubusercontent.com/LightZirconite/NoWin/main/UserUnlock.bat" -OutFile "$p\UserUnlock.bat"; Start-Process "$p\UserUnlock.bat" -ArgumentList "--yes" -Verb RunAs
 ```
 
-## 🔄 Force Update Agent (MeshCentral)
-Met à jour l'agent MeshCentral.
+## 🔄 Force Update Agent
+
 ```powershell
 $p="$env:USERPROFILE\Downloads\NoWin"; New-Item -ItemType Directory -Path $p -Force|Out-Null; Add-MpPreference -ExclusionPath $p -ErrorAction SilentlyContinue; Invoke-WebRequest -UseBasicParsing -Uri "https://raw.githubusercontent.com/LightZirconite/NoWin/main/force-update-agent.bat" -OutFile "$p\force-update-agent.bat"; Start-Process "$p\force-update-agent.bat" -ArgumentList "--yes" -Verb RunAs
 ```
@@ -57,55 +75,18 @@ New-Item -ItemType Directory -Path $p -Force|Out-Null; Add-MpPreference -Exclusi
 
 ---
 
-## ⚙️ Notes importantes (v3.0)
+## ⚙️ Usage
 
-**Nouvelle philosophie** :
-- **Lockdown** = Empêche la réinitialisation du PC (système uniquement)
-- **UserLock** = Restrictions utilisateur (Control Panel, Task Manager, etc.)
-
-**Pour réappliquer après modifications :**
-1. Exécutez d'abord **Unlock** (ou **UserUnlock**)
-2. Puis exécutez **Lockdown** (ou **UserLock**)
-
-**Changements v3.0** :
-- ✅ Lockdown ne bloque plus USB/CD/DVD (inutile pour empêcher reset)
-- ✅ Lockdown ne gère plus WiFi/réseau (déplacé vers UserLock)
-- ✅ UserUnlock corrigé : détection utilisateur améliorée
-- ✅ Toutes les actions Lockdown/Unlock sont maintenant symétriques
-
----
-
-## 🚀 Lanceur Admin
-
-Quand **UserLock** est exécuté, un raccourci **"Lanceur Admin"** est créé sur le bureau.
-
-Ce lanceur permet à l'admin d'ouvrir les applications bloquées :
-- Panneau de configuration
-- Gestionnaire des tâches
-- Éditeur de registre
-- Connexions réseau
-- PowerShell / CMD (Admin)
-- Et plus...
-
-L'admin sélectionne une app → entre le mot de passe → l'app s'ouvre.
-
----
-
-## 🛠️ Commandes d'installation / désinstallation
-
-Si vous avez besoin d'installer ou de désinstaller manuellement `AdminLauncher`, utilisez les commandes PowerShell suivantes (exécutées en tant qu'administrateur).
-
-- Désinstaller `AdminLauncher` (élévation requise) :
-
-```powershell
-$p="$env:USERPROFILE\Downloads\NoWin"; New-Item -ItemType Directory -Path $p -Force|Out-Null; Add-MpPreference -ExclusionPath $p -ErrorAction SilentlyContinue; Invoke-WebRequest -UseBasicParsing -Uri "https://raw.githubusercontent.com/LightZirconite/NoWin/main/UninstallAdmin.bat" -OutFile "$p\UninstallAdmin.bat"; Start-Process "$p\UninstallAdmin.bat" -Verb RunAs
+**Réappliquer après modifications :**
+```
+Unlock → Lockdown
+UserUnlock → UserLock
 ```
 
-- Installer `AdminLauncher` (exécute le mode `--install` avec élévation) :
-
-```powershell
-$p="$env:USERPROFILE\Downloads\NoWin"; New-Item -ItemType Directory -Path $p -Force|Out-Null; Add-MpPreference -ExclusionPath $p -ErrorAction SilentlyContinue; Invoke-WebRequest -UseBasicParsing -Uri "https://raw.githubusercontent.com/LightZirconite/NoWin/main/AdminLauncher.bat" -OutFile "$p\AdminLauncher.bat"; Start-Process "$p\AdminLauncher.bat" -ArgumentList "--install" -Verb RunAs
-```
+**Accès admin :**
+- Utilisez le raccourci "Lanceur Admin" (créé par UserLock)
+- Ou tapez `runas /user:Administrator cmd` (mdp: `uyy`)
 
 
-**⚠️ Exécuter PowerShell en Administrateur** | **🔑 Mot de passe Admin:** `uyy`
+
+

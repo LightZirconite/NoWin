@@ -9,7 +9,6 @@ setlocal EnableDelayedExpansion
 :: Check for --yes argument (bypass confirmations)
 set "AUTO_YES=0"
 if /i "%~1"=="--yes" set "AUTO_YES=1"
-if /i "%~1"=="-y" set "AUTO_YES=1"
 
 :: Check for Administrator privileges
 net session >nul 2>&1
@@ -109,7 +108,11 @@ bcdedit /deletevalue {globalsettings} optionsedit >nul 2>&1
 :: 2.7 Re-enable bootlog
 bcdedit /deletevalue {current} bootlog >nul 2>&1
 
+:: 2.8 Re-enable Shift+Restart recovery access
+reg delete "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Configuration Manager" /v DisableStartupRepair /f >nul 2>&1
+
 echo    * BCD settings restored.
+echo    * Shift+Restart recovery access ENABLED.
 
 :: =============================================
 :: SECTION 3: RESTORE WINDOWS SETUP
