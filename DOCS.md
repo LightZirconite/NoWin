@@ -111,12 +111,13 @@ Créé automatiquement sur le bureau public. Permet de lancer :
 
 ```
 NoWin/
-├── Lockdown.bat       # Verrouillage système (v2.2)
-├── Unlock.bat         # Déverrouillage système (v2.2)
-├── Verify.bat         # Vérification (v2.2)
-├── UserLock.bat       # Restriction utilisateur (v2.3)
-├── UserUnlock.bat     # Restauration utilisateur (v2.3)
-├── AdminLauncher.bat  # Lanceur apps bloquées (v2.3)
+├── Lockdown.bat       # Verrouillage système (v3.0)
+├── Unlock.bat         # Déverrouillage système (v3.0)
+├── Verify.bat         # Vérification (v3.0)
+├── UserLock.bat       # Restriction utilisateur (v3.0)
+├── UserUnlock.bat     # Restauration utilisateur (v3.0)
+├── AdminLauncher.bat  # Lanceur apps bloquées (v3.0)
+├── UninstallAdmin.bat # Désinstallation AdminLauncher (v3.0)
 ├── force-update-agent.bat  # MeshCentral
 ├── logo.ico           # Icône du Lanceur
 ├── README.md          # Documentation simple

@@ -1,31 +1,37 @@
 @echo off
 chcp 65001 >nul 2>&1
 setlocal EnableDelayedExpansion
-title Désinstallation NoWin - AdminLauncher
+:: ============================================
+:: UNINSTALLADMIN.BAT - Remove AdminLauncher
+:: Version 3.0 - Matches NoWin v3.0
+:: ============================================
 
-:: =============================================
-:: UNINSTALL SCRIPT - Remove AdminLauncher
-:: =============================================
+title Desinstallation AdminLauncher - NoWin v3.0
 
 cls
 echo.
-echo ==========================================================
-echo   DESINSTALLATION ADMINLAUNCHER - NoWin
-echo ==========================================================
+echo ==========================================
+echo   DESINSTALLATION ADMINLAUNCHER v3.0
+echo ==========================================
 echo.
-echo   Ce script va:
-echo   1. Reprendre le controle des fichiers
-echo   2. Supprimer le dossier C:\Program Files\NoWin
-echo   3. Supprimer le raccourci sur le bureau
+echo Ce script va:
+echo   1. Reprendre controle des fichiers
+echo   2. Supprimer C:\Program Files\NoWin
+echo   3. Supprimer raccourci bureau
 echo.
-echo ==========================================================
+echo ==========================================
 echo.
 
 :: Check for admin rights
 net session >nul 2>&1
 if !errorLevel! neq 0 (
-    echo [!] Droits administrateur requis.
-    echo     Tentative d'elevation...
+    echo.
+    echo ========================================
+    echo    ELEVATION REQUISE
+    echo ========================================
+    echo.
+    echo Ce script necessite des droits ADMINISTRATEUR.
+    echo Tentative d'elevation automatique...
     echo.
     powershell -NoProfile -Command "Start-Process -FilePath '%~f0' -Verb RunAs"
     exit /b
@@ -73,17 +79,19 @@ if exist "%SHORTCUT_PATH%" (
     )
 ) else (
     echo    * Deja supprime
-)
-
-echo [5/5] Nettoyage termine.
-echo.
-echo ==========================================================
-echo   DESINSTALLATION TERMINEE !
-echo ==========================================================
+echo   DESINSTALLATION TERMINEE (v3.0)
+echo ==========================================
 echo.
 
 if exist "%INSTALL_DIR%" (
-    echo [!] Attention: Le dossier existe toujours.
+    echo [!] ATTENTION: Dossier existe toujours.
+    echo     Fermez tous les programmes et reessayez.
+) else (
+    echo  [+] Tous les fichiers supprimes.
+)
+
+echo.
+echo ==========================================    echo [!] Attention: Le dossier existe toujours.
     echo     Fermez tous les programmes et reessayez.
 ) else (
     echo   * Tous les fichiers ont ete supprimes.

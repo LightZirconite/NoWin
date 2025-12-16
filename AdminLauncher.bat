@@ -1,10 +1,12 @@
 @echo off
 chcp 65001 >nul 2>&1
 setlocal EnableDelayedExpansion
-:: Protected Admin Launcher - NoWin v3.0
-:: Security: Anti-copy, Anti-tampering, Obfuscated
+:: ============================================
+:: ADMINLAUNCHER.BAT - Protected Admin Launcher
+:: Version 3.0 - Matches NoWin v3.0
+:: ============================================
 
-title Lanceur Administrateur - NoWin
+title Lanceur Administrateur - NoWin v3.0
 
 :: =============================================
 :: SECURITY CHECK: Verify Execution Location
@@ -40,19 +42,19 @@ if /i not "%CURRENT_PATH%"=="%AUTHORIZED_PATH%" (
 
 :CHECK_INSTALL_MODE
 
-:: Check for parameters
+:: Check for --install argument
 set "INSTALL_ONLY=0"
 if /i "%~1"=="--install" set "INSTALL_ONLY=1"
-if /i "%~1"=="-i" set "INSTALL_ONLY=1"
 
 :: =============================================
-:: SECTION 0: AUTO-UPDATE (DESACTIVE)
+:: SECTION 0: INITIALIZATION
 :: =============================================
 set "INSTALL_DIR=C:\Program Files\NoWin"
 set "SHORTCUT_PATH=C:\Users\Public\Desktop\Lanceur Admin.lnk"
 set "CURRENT_PATH=%~f0"
 set "INSTALLED_PATH=%INSTALL_DIR%\AdminLauncher.bat"
-:: Auto-update supprime : passage direct au flux principal
+
+:: Auto-update disabled - direct flow
 goto :SKIP_UPDATE_CHECK
 
 :SKIP_UPDATE_CHECK
@@ -105,14 +107,12 @@ exit /b
 if "%INSTALL_ONLY%"=="0" (
     cls
     echo.
-    echo ==========================================================
-    echo        INSTALLATION DU LANCEUR ADMINISTRATEUR
-    echo ==========================================================
+    echo ==========================================
+    echo   INSTALLATION LANCEUR ADMIN v3.0
+    echo ==========================================
     echo.
-    echo Ce script va s'installer dans:
-    echo   %INSTALL_DIR%
-    echo.
-    echo Et creer un raccourci sur le bureau public.
+    echo Installation dans: %INSTALL_DIR%
+    echo Raccourci: Bureau public
     echo.
 )
 
@@ -120,13 +120,18 @@ if "%INSTALL_ONLY%"=="0" (
 net session >nul 2>&1
 if !errorLevel! neq 0 (
     if "%INSTALL_ONLY%"=="1" (
-        :: Silent mode - try elevation once, fail silently if impossible
-        echo [!] Droits administrateur requis pour l'installation.
+        :: Silent mode - try elevation
+        echo [ERREUR] Droits administrateur requis.
         powershell -NoProfile -WindowStyle Hidden -Command "Start-Process -FilePath '%~f0' -ArgumentList '--install' -Verb RunAs -Wait" >nul 2>&1
         exit /b !errorLevel!
     ) else (
-        echo [!] Droits administrateur requis pour l'installation.
-        echo     Tentative d'elevation...
+        echo.
+        echo ========================================
+        echo    ELEVATION REQUISE
+        echo ========================================
+        echo.
+        echo Ce script necessite des droits ADMINISTRATEUR.
+        echo Tentative d'elevation automatique...
         echo.
         powershell -NoProfile -Command "Start-Process -FilePath '%~f0' -Verb RunAs"
         exit /b
@@ -168,19 +173,19 @@ if "%INSTALL_ONLY%"=="1" (
 )
 
 echo.
-echo ==========================================================
-echo   INSTALLATION TERMINEE !
-echo ==========================================================
+echo ==========================================
+echo   INSTALLATION TERMINEE (v3.0)
+echo ==========================================
 echo.
-echo   * Script installe dans: %INSTALL_DIR%
-echo   * Raccourci cree sur le bureau public
-echo   * Fichier protege en lecture seule
-echo   * Anti-copie: Bloque si execute hors Program Files
+echo  [+] Script: %INSTALL_DIR%
+echo  [+] Raccourci: Bureau public
+echo  [+] Protection: Lecture seule
+echo  [+] Anti-copie: Actif
 echo.
-echo   Vous pouvez maintenant utiliser le raccourci
-echo   "Lanceur Admin" sur le bureau.
+echo Utilisez le raccourci "Lanceur Admin"
+echo sur le bureau.
 echo.
-echo ==========================================================
+echo ==========================================
 echo.
 pause
 goto :MENU
@@ -191,9 +196,9 @@ goto :MENU
 :MENU
 cls
 echo.
-echo ==========================================================
-echo           LANCEUR ADMINISTRATEUR - NoWin
-echo ==========================================================
+echo ==========================================
+echo     LANCEUR ADMIN - NoWin v3.0
+echo ==========================================
 echo.
 echo    [1]  Panneau de configuration
 echo    [2]  Gestionnaire des taches
@@ -209,12 +214,12 @@ echo    [11] PowerShell (Admin)
 echo    [12] Explorateur de fichiers (Admin)
 echo    [13] Unowhy Tools (Admin)
 echo.
-echo    === NoWin Scripts (PowerShell Admin requis) ===
-echo    [L]  Lockdown - Verrouiller systeme
-echo    [U]  Unlock - Deverrouiller systeme
-echo    [K]  UserLock - Verrouiller utilisateur
-echo    [R]  UserUnlock - Restaurer droits utilisateur
-echo    [V]  Verify - Verifier etat systeme
+echo    === Scripts NoWin ===
+echo    [L]  Lockdown
+echo    [U]  Unlock
+echo    [K]  UserLock
+echo    [R]  UserUnlock
+echo    [V]  Verify
 echo    [F]  Force Update Agent
 echo.
 echo    [C]  Application personnalisee
@@ -222,9 +227,11 @@ echo    [I]  Reinstaller ce lanceur
 echo.
 echo    [0]  Quitter
 echo.
-echo ==========================================================
-echo.
-set /p "CHOICE=Choisissez une option: "
+echo ==========================================
+echo  NoWin v3.0 | Mot de passe: uyy
+echo ==========================================
+    echo  NoWin v3.0 | Mot de passe: uyy
+    echo ==========================================
 
 if /i "%CHOICE%"=="0" exit /b
 if /i "%CHOICE%"=="1" set "APP=control.exe" & set "APPNAME=Panneau de configuration" & goto :LAUNCH
@@ -263,14 +270,11 @@ goto :MENU
 :LAUNCH
 cls
 echo.
-echo ==========================================================
-echo   Lancement: %APPNAME% (SYSTEM Bypass)
-echo ==========================================================
+echo ==========================================
+echo   Lancement: %APPNAME%
+echo ==========================================
 echo.
-echo   Creation d'une tache temporaire pour contourner
-echo   les restrictions de groupe...
-echo.
-echo ==========================================================
+echo Contournement restrictions via SYSTEM...
 echo.
 
 :: Generate unique task name
@@ -280,19 +284,16 @@ set "TASK_NAME=NoWinLaunch_%RANDOM%"
 schtasks /create /tn "%TASK_NAME%" /tr "%APP%" /sc once /st 00:00 /rl highest /ru SYSTEM /f >nul 2>&1
 
 if !errorLevel! neq 0 (
-    echo [ERREUR] Impossible de creer la tache planifiee.
-    echo Tentative avec runas classique...
+    echo [ERREUR] Tache planifiee echouee.
+    echo Tentative runas classique...
     echo.
     runas /user:Administrator "%APP%"
 ) else (
-    :: Run task immediately
     schtasks /run /tn "%TASK_NAME%" >nul 2>&1
     timeout /t 2 /nobreak >nul
-    
-    :: Delete task
     schtasks /delete /tn "%TASK_NAME%" /f >nul 2>&1
     
-    echo [OK] %APPNAME% lance via SYSTEM
+    echo [OK] %APPNAME% lance.
     echo.
 )
 
