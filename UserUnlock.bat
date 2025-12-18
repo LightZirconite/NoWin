@@ -95,7 +95,7 @@ echo.
 set "TARGET_USER="
 set "FOUND_USERS=0"
 
-for /f "usebackq tokens=*" %%u in (`powershell -NoProfile -Command "Get-LocalUser | Where-Object {$_.Enabled -eq $true -and $_.Name -notmatch '^(Administrator|Administrateur|Guest|DefaultAccount|WDAGUtilityAccount|Support)$'} | ForEach-Object { $user = $_.Name; $isAdmin = (Get-LocalGroupMember -Group '!ADMIN_GROUP!' -ErrorAction SilentlyContinue | Where-Object { $_.Name -like '*\' + $user }).Count -gt 0; if(-not $isAdmin) { $user } }"`) do (
+for /f "usebackq tokens=*" %%u in (`powershell -NoProfile -Command "Get-LocalUser | Where-Object {$_.Enabled -eq $true -and $_.Name -notmatch '^(Administrator|Administrateur|Guest|DefaultAccount|WDAGUtilityAccount|Support)$'} | ForEach-Object { $user = $_.Name; $isAdmin = (Get-LocalGroupMember -Group '!ADMIN_GROUP!' -ErrorAction SilentlyContinue | Where-Object { $_.Name -match [regex]::Escape($user) + '$' }).Count -gt 0; if(-not $isAdmin) { $user } }"`) do (
     if not defined TARGET_USER set "TARGET_USER=%%u"
     set /a FOUND_USERS+=1
 )
