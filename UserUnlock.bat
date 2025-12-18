@@ -477,15 +477,42 @@ echo  [-] Lanceur Admin supprime
 echo  [+] Bureau a distance
 echo  [+] Administrator visible sur ecran connexion
 echo.
+echo ==========================================
+echo     IMPORTANT: DECONNEXION REQUISE
+echo ==========================================
+echo.
+echo Pour finaliser les changements, vous devez:
+echo  1. Vous deconnecter de Windows
+echo  2. Vous reconnecter avec [!TARGET_USER!]
+echo.
+
 if "%AUTO_YES%"=="1" (
     echo.
-    echo [AUTO] Deconnexion dans 5 secondes...
-    timeout /t 5 /nobreak >nul
+    choice /c on /t 10 /d n /m "Deconnexion automatique dans 10s (o=maintenant / n=annuler)"
+    if errorlevel 2 (
+        echo.
+        echo [INFO] Deconnexion annulee. Pensez a vous deconnecter manuellement.
+        echo.
+        pause
+        exit /b 0
+    )
+    echo.
+    echo [AUTO] Deconnexion maintenant...
+    timeout /t 2 /nobreak >nul
     shutdown /l
 ) else (
     echo.
-    echo Appuyez sur une touche pour vous deconnecter...
-    pause >nul
+    choice /c on /m "Voulez-vous vous deconnecter maintenant? (o/n)"
+    if errorlevel 2 (
+        echo.
+        echo [INFO] Deconnexion reportee. Pensez a vous deconnecter manuellement.
+        echo.
+        pause
+        exit /b 0
+    )
+    echo.
+    echo [INFO] Deconnexion en cours...
+    timeout /t 2 /nobreak >nul
     shutdown /l
 )
 
