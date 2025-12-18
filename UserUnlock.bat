@@ -72,17 +72,16 @@ echo.
 echo Detection de l'utilisateur a restaurer...
 echo.
 
-:: Get ALL enabled users (excluding system accounts)
-set "TARGET_USER="
-set "FOUND_USERS=0"
+:: Get CURRENT logged-in user (session actuelle)
+set "TARGET_USER=%USERNAME%"
 
-for /f "usebackq tokens=*" %%u in (`powershell -NoProfile -Command "Get-LocalUser | Where-Object {$_.Enabled -eq $true -and $_.Name -notmatch '^(Administrator|Administrateur|Guest|DefaultAccount|WDAGUtilityAccount)$'} | Select-Object -ExpandProperty Name"`) do (
-    if not defined TARGET_USER set "TARGET_USER=%%u"
-    set /a "FOUND_USERS+=1"
+:: Verify user exists and is valid
+for /f "usebackq tokens=*" %%u in (`powershell -NoProfile -Command "Get-LocalUser -Name '%USERNAME%' -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Name"`) do (
+    set "TARGET_USER=%%u"
 )
 
 if not defined TARGET_USER (
-    echo [ERREUR] Aucun utilisateur a restaurer trouve.
+    echo [ERREUR] Impossible de detecter l'utilisateur actuel.
     if "%AUTO_YES%"=="1" (timeout /t 2 /nobreak >nul) else (pause)
     exit /b
 )
@@ -94,7 +93,7 @@ for /f "usebackq tokens=*" %%s in (`powershell -NoProfile -Command "(Get-LocalUs
     set "TARGET_SID=%%s"
 )
 
-echo Utilisateur detecte: [!TARGET_USER!]
+echo Utilisateur detecte: [!TARGET_USER!] (session actuelle)
 if defined TARGET_SID echo    * SID: !TARGET_SID!
 
 :: Check current admin status
@@ -106,7 +105,7 @@ if not errorlevel 1 (
 )
 
 echo.
-echo Ce script va TOUT debloquer pour [!TARGET_USER!]:
+echo Ce script va TOUT debloquer pour [!TARGET_USER!] (VOUS):
 echo  [+] Restaurer droits Administrateur
 echo  [+] Debloquer Panneau de configuration
 echo  [+] Debloquer Editeur de registre
