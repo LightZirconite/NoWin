@@ -91,20 +91,11 @@ echo.
 echo Detection de l'utilisateur a restaurer...
 echo.
 
-:: Method 1: Get ALL standard users (not admins)
+:: Get first non-system user (simplified approach)
 set "TARGET_USER="
-set "FOUND_USERS=0"
 
-for /f "usebackq tokens=*" %%u in (`powershell -NoProfile -Command "$adminGroup='!ADMIN_GROUP!'; Get-LocalUser | Where-Object {$_.Enabled -eq $true -and $_.Name -notmatch '^(Administrator|Administrateur|Guest|DefaultAccount|WDAGUtilityAccount|Support)$'} | ForEach-Object { $user = $_.Name; $members = Get-LocalGroupMember -Group $adminGroup -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Name; $isAdmin = $members | Where-Object { $_ -match \"\\$user$\" }; if(-not $isAdmin) { $user } }"`) do (
-    if not defined TARGET_USER set "TARGET_USER=%%u"
-    set /a FOUND_USERS+=1
-)
-
-:: Fallback: If ALL users are admins, pick first non-system user anyway
-if not defined TARGET_USER (
-    for /f "usebackq tokens=*" %%u in (`powershell -NoProfile -Command "Get-LocalUser | Where-Object {$_.Enabled -eq $true -and $_.Name -notmatch '^(Administrator|Administrateur|Guest|DefaultAccount|WDAGUtilityAccount|Support)$'} | Select-Object -First 1 -ExpandProperty Name"`) do (
-        set "TARGET_USER=%%u"
-    )
+for /f "tokens=*" %%u in ('powershell -NoProfile -Command "Get-LocalUser | Where-Object {$_.Enabled -eq $true -and $_.Name -notmatch '^(Administrator|Administrateur|Guest|DefaultAccount|WDAGUtilityAccount|Support)$'} | Select-Object -First 1 -ExpandProperty Name"') do (
+    set "TARGET_USER=%%u"
 )
 
 if not defined TARGET_USER (
