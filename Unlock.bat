@@ -342,9 +342,25 @@ echo  [+] DISM / SFC tools
 echo  [+] Sleep / Hibernation
 echo  [+] WiFi Access (full control)
 echo.
-echo NOTE: A reboot is recommended to fully apply changes.
+echo ==========================================
+echo     REBOOT RECOMMANDE
+echo ==========================================
 echo.
-if "%AUTO_YES%"=="1" (echo [AUTO] Unlock termine.) else (pause)
+echo Un redemarrage est FORTEMENT recommande
+echo pour appliquer tous les changements.
+echo.
+
+if "%AUTO_YES%"=="1" (
+    echo [AUTO] Unlock termine.
+) else (
+    choice /c onr /m "Que voulez-vous faire? (o=Quitter / n=Quitter / r=Redemarrer)"
+    if errorlevel 3 (
+        echo.
+        echo [INFO] Redemarrage du PC...
+        timeout /t 3 /nobreak >nul
+        shutdown /r /t 0
+    )
+)
 3.0)
 echo ==========================================
 echo.

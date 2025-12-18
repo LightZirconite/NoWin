@@ -554,16 +554,36 @@ echo ==========================================
 echo    IMPORTANT: DECONNEXION REQUISE
 echo ==========================================
 echo.
-echo Les changements de groupe necessitent une deconnexion
-echo pour prendre effet completement.
+echo ==========================================
+echo     DECONNEXION RECOMMANDEE
+echo ==========================================
 echo.
+echo Les changements de groupe necessitent une deconnexion
+echo ou un redemarrage pour prendre effet completement.
+echo.
+
 if "%AUTO_YES%"=="1" (
     echo [AUTO] Deconnexion dans 3 secondes...
     timeout /t 3 /nobreak >nul
 ) else (
-    echo Appuyez sur une touche pour vous deconnecter...
-    pause >nul
+    choice /c onrl /m "Action? (o=Quitter / n=Quitter / r=Redemarrer / l=Deconnecter)"
+    if errorlevel 4 (
+        goto :DO_LOGOUT
+    )
+    if errorlevel 3 (
+        echo.
+        echo [INFO] Redemarrage du PC...
+        timeout /t 2 /nobreak >nul
+        shutdown /r /t 0
+        exit /b 0
+    )
+    echo.
+    echo [INFO] Pensez a vous deconnecter manuellement.
+    pause
+    exit /b 0
 )
+
+:DO_LOGOUT
 
 :: Final verification before logout
 echo.

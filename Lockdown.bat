@@ -439,4 +439,22 @@ echo.
 echo NOTE: BIOS/UEFI access requires physical security
 echo       (BIOS password must be set manually)
 echo.
-if "%AUTO_YES%"=="1" (echo [AUTO] Lockdown termine.) else (pause)
+echo ==========================================
+echo     REBOOT RECOMMANDE
+echo ==========================================
+echo.
+echo Un redemarrage est FORTEMENT recommande
+echo pour appliquer tous les changements.
+echo.
+
+if "%AUTO_YES%"=="1" (
+    echo [AUTO] Lockdown termine.
+) else (
+    choice /c onr /m "Que voulez-vous faire? (o=Quitter / n=Quitter / r=Redemarrer)"
+    if errorlevel 3 (
+        echo.
+        echo [INFO] Redemarrage du PC...
+        timeout /t 3 /nobreak >nul
+        shutdown /r /t 0
+    )
+)

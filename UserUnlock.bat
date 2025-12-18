@@ -483,15 +483,23 @@ if "%AUTO_YES%"=="1" (
     pause
     exit /b 0
 ) else (
-    choice /c on /m "Deconnexion maintenant? (o/n)"
-    if not errorlevel 2 (
+    choice /c onrl /m "Action? (o=Quitter / n=Quitter / r=Redemarrer / l=Deconnecter)"
+    if errorlevel 4 (
         echo.
         echo [INFO] Deconnexion...
         timeout /t 2 /nobreak >nul
         shutdown /l
+        exit /b 0
+    )
+    if errorlevel 3 (
+        echo.
+        echo [INFO] Redemarrage du PC...
+        timeout /t 2 /nobreak >nul
+        shutdown /r /t 0
+        exit /b 0
     )
     echo.
-    echo [INFO] Pensez a vous deconnecter manuellement.
+    echo [INFO] Pensez a vous deconnecter/redemarrer manuellement.
     pause
     exit /b 0
 )
