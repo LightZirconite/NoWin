@@ -38,21 +38,6 @@ if %errorLevel% neq 0 (
 echo ==========================================
 echo     USER PRIVILEGE RESTORE v3.0
 echo ==========================================
-echo.
-
-if "%AUTO_YES%"=="1" goto confirm_done
-echo ==========================================
-echo.
-choice /c on /n /m "Continuer? (o/n): "
-if errorlevel 2 (
-    echo.
-    echo [ANNULE] Operation annulee par l'utilisateur.
-    echo.
-    pause
-    exit /b 1
-)
-echo.
-:confirm_done
 
 :: =============================================
 :: SECTION 0: DETECT GROUP NAMES
@@ -83,24 +68,17 @@ echo.
 :: =============================================
 :: SECTION 1: IDENTIFY TARGET USER
 :: =============================================
+echo.
 echo Detection de l'utilisateur a restaurer...
 echo.
 
-:: Get first non-admin standard user
+:: Get ALL enabled users (excluding system accounts)
 set "TARGET_USER="
 set "FOUND_USERS=0"
-set "ADMIN_GROUP_CMD=!ADMIN_GROUP!"
 
-for /f "usebackq tokens=*" %%u in (`powershell -NoProfile -Command "$adminGroup='%ADMIN_GROUP_CMD%'; Get-LocalUser | Where-Object {$_.Enabled -eq $true -and $_.Name -notmatch '^(Administrator|Administrateur|Guest|DefaultAccount|WDAGUtilityAccount|Support)$'} | ForEach-Object { $user = $_.Name; $members = Get-LocalGroupMember -Group $adminGroup -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Name; $isAdmin = $members | Where-Object { $_ -match ([regex]::Escape($user) + '$') }; if(-not $isAdmin) { $user } }"`) do (
+for /f "usebackq tokens=*" %%u in (`powershell -NoProfile -Command "Get-LocalUser | Where-Object {$_.Enabled -eq $true -and $_.Name -notmatch '^(Administrator|Administrateur|Guest|DefaultAccount|WDAGUtilityAccount)$'} | Select-Object -ExpandProperty Name"`) do (
     if not defined TARGET_USER set "TARGET_USER=%%u"
     set /a "FOUND_USERS+=1"
-)
-
-:: Fallback: Pick first non-system user
-if not defined TARGET_USER (
-    for /f "usebackq tokens=*" %%u in (`powershell -NoProfile -Command "Get-LocalUser | Where-Object {$_.Enabled -eq $true -and $_.Name -notmatch '^(Administrator|Administrateur|Guest|DefaultAccount|WDAGUtilityAccount|Support)$'} | Select-Object -First 1 -ExpandProperty Name"`) do (
-        set "TARGET_USER=%%u"
-    )
 )
 
 if not defined TARGET_USER (
@@ -154,22 +132,30 @@ if "%AUTO_YES%"=="1" (
 set /p "CONFIRM=[!TARGET_USER!] est le bon utilisateur? (O/N): "
 if /i "%CONFIRM%"=="N" (
     echo.
-    echo Liste des utilisateurs:
-    echo =======================
+    echo Liste de TOUS les utilisateurs:
+    echo ==================================
     set "USER_COUNT=0"
-    for /f "skip=4 tokens=1" %%u in ('net user 2^>nul') do (
-        if not "%%u"=="The" if not "%%u"=="---" if not "%%u"=="" (
-            set /a "USER_COUNT+=1"
-            echo   [!USER_COUNT!] %%u
-            set "USER_!USER_COUNT!=%%u"
-        )
+    
+    for /f "usebackq tokens=*" %%u in (`powershell -NoProfile -Command "Get-LocalUser | Where-Object {$_.Enabled -eq $true} | Select-Object -ExpandProperty Name"`) do (
+        set /a "USER_COUNT+=1"
+        echo   [!USER_COUNT!] %%u
+        set "USER_!USER_COUNT!=%%u"
     )
+    
     echo.
     set /p "USER_CHOICE=Numero (1-!USER_COUNT!): "
     if defined USER_!USER_CHOICE! (
         for /f "tokens=*" %%a in ("!USER_%USER_CHOICE%!") do set "TARGET_USER=%%a"
         echo.
-        echo Utilisateur: [!TARGET_USER!]
+        echo Utilisateur selectionne: [!TARGET_USER!]
+        echo.
+        :: Re-get SID for new user
+        set "TARGET_SID="
+        set "TARGET_USER_CMD=!TARGET_USER!"
+        for /f "usebackq tokens=*" %%s in (`powershell -NoProfile -Command "(Get-LocalUser -Name '%TARGET_USER_CMD%' -ErrorAction SilentlyContinue).SID.Value"`) do (
+            set "TARGET_SID=%%s"
+        )
+        if defined TARGET_SID echo    * SID: !TARGET_SID!
         echo.
     )
     goto :PROCEED
