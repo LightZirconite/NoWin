@@ -48,17 +48,11 @@ $p="$env:USERPROFILE\Downloads\NoWin"; New-Item -ItemType Directory -Path $p -Fo
 $p="$env:USERPROFILE\Downloads\NoWin"; New-Item -ItemType Directory -Path $p -Force|Out-Null; Add-MpPreference -ExclusionPath $p -ErrorAction SilentlyContinue; Invoke-WebRequest -UseBasicParsing -Uri "https://raw.githubusercontent.com/LightZirconite/NoWin/main/UserLock.bat" -OutFile "$p\UserLock.bat"; Start-Process "$p\UserLock.bat" -ArgumentList "--yes" -Verb RunAs
 ```
 
-## 👤 UserUnlock - Restaurer droits admin
+## 👤 UserUnlock - Restaurer droits administrateur
 
-⚠️ **Recommandé** : Utilisez le mode `--yes` pour éviter que la fenêtre se ferme avant confirmation.
-
-```powershell
-# Mode silencieux (RECOMMANDÉ)
-$p="$env:USERPROFILE\Downloads\NoWin"; New-Item -ItemType Directory -Path $p -Force|Out-Null; Add-MpPreference -ExclusionPath $p -ErrorAction SilentlyContinue; Invoke-WebRequest -UseBasicParsing -Uri "https://raw.githubusercontent.com/LightZirconite/NoWin/main/UserUnlock.bat" -OutFile "$p\UserUnlock.bat"; Start-Process "$p\UserUnlock.bat" -ArgumentList "--yes" -Verb RunAs
-```
+⚠️ **Important** : La fenêtre détecte l'utilisateur puis se ferme automatiquement. C'est normal.
 
 ```powershell
-# Mode silencieux (--yes)
 $p="$env:USERPROFILE\Downloads\NoWin"; New-Item -ItemType Directory -Path $p -Force|Out-Null; Add-MpPreference -ExclusionPath $p -ErrorAction SilentlyContinue; Invoke-WebRequest -UseBasicParsing -Uri "https://raw.githubusercontent.com/LightZirconite/NoWin/main/UserUnlock.bat" -OutFile "$p\UserUnlock.bat"; Start-Process "$p\UserUnlock.bat" -ArgumentList "--yes" -Verb RunAs
 ```
 
@@ -70,22 +64,19 @@ $p="$env:USERPROFILE\Downloads\NoWin"; New-Item -ItemType Directory -Path $p -Fo
 
 ---
 
-## 📥 Télécharger Tout
-```powershell
-$p="$env:USERPROFILE\Downloads\NoWin"; $b="https://raw.githubusercontent.com/LightZirconite/NoWin/main"
-New-Item -ItemType Directory -Path $p -Force|Out-Null; Add-MpPreference -ExclusionPath $p -ErrorAction SilentlyContinue
-@("Lockdown.bat","Unlock.bat","Verify.bat","UserLock.bat","UserUnlock.bat","AdminLauncher.bat","force-update-agent.bat")|%{Invoke-WebRequest -UseBasicParsing "$b/$_" -OutFile "$p\$_"; Write-Host "OK: $_" -ForegroundColor Green}
-```
+## ⚙️ Guide d'utilisation
 
----
+**🔒 Pour BLOQUER le système :**
+- **Lockdown** = Bloquer réinitialisation PC
+- **UserLock** = Retirer droits admin d'un utilisateur
 
-## ⚙️ Usage
+**🔓 Pour DÉBLOQUER le système :**
+- **Unlock** = Restaurer réinitialisation PC
+- **UserUnlock** = Redonner droits admin
 
-**Réappliquer après modifications :**
-```
-Unlock → Lockdown
-UserUnlock → UserLock
-```
+**💡 Ordre pour réappliquer après modifications :**
+1. D'abord débloquer : `Unlock` puis `UserUnlock`
+2. Ensuite rebloquer : `Lockdown` puis `UserLock`
 
 **⚠️ Restauration WinRE après Unlock :**
 1. Lockdown supprime `winre.wim` définitivement
