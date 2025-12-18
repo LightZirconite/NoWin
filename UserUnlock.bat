@@ -22,7 +22,7 @@ if %errorLevel% neq 0 (
     echo Tentative d'elevation automatique...
     echo.
     powershell -NoProfile -Command "Start-Process -FilePath '%~f0' -Verb RunAs" 2>nul
-    if !errorLevel! neq 0 (
+    if errorlevel 1 (
         echo [ERREUR] Impossible d'obtenir les droits administrateur.
         echo.
         echo Causes possibles:
@@ -94,8 +94,9 @@ echo.
 :: Method 1: Get ALL standard users (not admins)
 set "TARGET_USER="
 set "FOUND_USERS=0"
+set "ADMIN_GROUP_TEMP=!ADMIN_GROUP!"
 
-for /f "usebackq tokens=*" %%u in (`powershell -NoProfile -Command "$adminGroup='!ADMIN_GROUP!'; Get-LocalUser | Where-Object {$_.Enabled -eq $true -and $_.Name -notmatch '^(Administrator|Administrateur|Guest|DefaultAccount|WDAGUtilityAccount|Support)$'} | ForEach-Object { $user = $_.Name; $members = Get-LocalGroupMember -Group $adminGroup -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Name; $isAdmin = $members | Where-Object { $_ -match \"\\$user$\" }; if(-not $isAdmin) { $user } }"`) do (
+for /f "usebackq tokens=*" %%u in (`powershell -NoProfile -Command "$adminGroup='%ADMIN_GROUP_TEMP%'; Get-LocalUser | Where-Object {$_.Enabled -eq $true -and $_.Name -notmatch '^(Administrator|Administrateur|Guest|DefaultAccount|WDAGUtilityAccount|Support)$'} | ForEach-Object { $user = $_.Name; $members = Get-LocalGroupMember -Group $adminGroup -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Name; $isAdmin = $members | Where-Object { $_ -match \"\\$user$\" }; if(-not $isAdmin) { $user } }"`) do (
     if not defined TARGET_USER set "TARGET_USER=%%u"
     set /a "FOUND_USERS+=1"
 )
@@ -116,7 +117,8 @@ if not defined TARGET_USER (
 
 :: Get the SID of target user for registry operations
 set "TARGET_SID="
-for /f "usebackq tokens=*" %%s in (`powershell -NoProfile -Command "(Get-LocalUser -Name '!TARGET_USER!' -ErrorAction SilentlyContinue).SID.Value"`) do (
+set "TARGET_USER_TEMP=!TARGET_USER!"
+for /f "usebackq tokens=*" %%s in (`powershell -NoProfile -Command "(Get-LocalUser -Name '%TARGET_USER_TEMP%' -ErrorAction SilentlyContinue).SID.Value"`) do (
     set "TARGET_SID=%%s"
 )
 
@@ -152,7 +154,7 @@ if /i "%CONFIRM%"=="N" (
     set "USER_COUNT=0"
     for /f "skip=4 tokens=1" %%u in ('net user 2^>nul') do (
         if not "%%u"=="The" if not "%%u"=="---" if not "%%u"=="" (
-            set /a USER_COUNT+=1
+            set /a "USER_COUNT+=1"
             echo   [!USER_COUNT!] %%u
             set "USER_!USER_COUNT!=%%u"
         )
@@ -193,7 +195,8 @@ if defined TARGET_SID (
     if errorlevel 1 (
         :: User not logged in, need to load NTUSER.DAT
         set "NTUSER_PATH="
-        for /f "tokens=*" %%p in ('powershell -NoProfile -Command "$prof = Get-WmiObject Win32_UserProfile ^| Where-Object {$_.SID -eq '!TARGET_SID!'}; if($prof){$prof.LocalPath}"') do (
+        set "TARGET_SID_TEMP=!TARGET_SID!"
+        for /f "tokens=*" %%p in ('powershell -NoProfile -Command "$prof = Get-WmiObject Win32_UserProfile ^| Where-Object {$_.SID -eq '%TARGET_SID_TEMP%'}; if($prof){$prof.LocalPath}"') do (
             set "NTUSER_PATH=%%p\NTUSER.DAT"
         )
         if exist "!NTUSER_PATH!" (
@@ -336,7 +339,7 @@ set "PROMOTE_SUCCESS=0"
 
 :: Use detected admin group name
 net localgroup "!ADMIN_GROUP!" "!TARGET_USER!" /add >nul 2>&1
-if !errorLevel! equ 0 set "PROMOTE_SUCCESS=1"
+if not errorlevel 1 set "PROMOTE_SUCCESS=1"
 
 if "!PROMOTE_SUCCESS!"=="1" (
     echo    * Succes. !TARGET_USER! est maintenant Administrateur.
@@ -352,7 +355,7 @@ echo [7] Gestion des comptes admin caches...
 
 :: Delete the hidden Support account if it exists
 net user Support /delete >nul 2>&1
-if !errorLevel! equ 0 (
+if not errorlevel 1 (
     echo    * Compte "Support" supprime.
 ) else (
     echo    * Compte "Support" n'existait pas.
