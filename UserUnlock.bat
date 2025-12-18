@@ -143,8 +143,11 @@ if /i "%CONFIRM%"=="N" (
     
     echo.
     set /p "USER_CHOICE=Numero (1-!USER_COUNT!): "
-    if defined USER_!USER_CHOICE! (
-        for /f "tokens=*" %%a in ("!USER_%USER_CHOICE%!") do set "TARGET_USER=%%a"
+    
+    :: Get the selected user using call trick for delayed expansion
+    call set "TARGET_USER=%%USER_!USER_CHOICE!%%"
+    
+    if defined TARGET_USER (
         echo.
         echo Utilisateur selectionne: [!TARGET_USER!]
         echo.
@@ -155,6 +158,10 @@ if /i "%CONFIRM%"=="N" (
             set "TARGET_SID=%%s"
         )
         if defined TARGET_SID echo    * SID: !TARGET_SID!
+        echo.
+    ) else (
+        echo.
+        echo [ERREUR] Choix invalide. Utilisation de l'utilisateur initial.
         echo.
     )
     goto :PROCEED
