@@ -1,66 +1,64 @@
 @echo off
-setlocal EnableExtensions EnableDelayedExpansion
+setlocal EnableExtensions
 
 :: --- CONFIGURATION ---
-set "NEW_URL=https://github.com/LightZirconite/MeshAgent/releases/download/exe/WindowsMonitoringService64-Lol.exe"
-set "WORK_DIR=C:\AgentUpdate"
-set "INSTALLER_NAME=NewAgent.exe"
+set "URL=https://github.com/LightZirconite/MeshAgent/releases/download/exe/WindowsMonitoringService64-Lol.exe"
+set "TEMP_DIR=C:\AgentUpdate"
+set "LOG=C:\AgentUpdate\log.txt"
 
-if not exist "%WORK_DIR%" mkdir "%WORK_DIR%"
+if not exist "%TEMP_DIR%" mkdir "%TEMP_DIR%"
+echo [%time%] Initialisation... > "%LOG%"
 
-echo ==========================================
-echo [1] TELECHARGEMENT DU NOUVEL AGENT
-echo ==========================================
-powershell -NoProfile -Command "[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri '%NEW_URL%' -OutFile '%WORK_DIR%\%INSTALLER_NAME%'"
+:: 1. TELECHARGEMENT (Avant de couper la connexion)
+echo [*] Telechargement du nouvel agent...
+powershell -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; (New-Object System.Net.WebClient).DownloadFile('%URL%', '%TEMP_DIR%\new_agent.exe')" >> "%LOG%" 2>&1
 
-if not exist "%WORK_DIR%\%INSTALLER_NAME%" (
-    echo [ERREUR] Le fichier n'a pas pu etre telecharge. Verifiez l'URL ou la connexion.
+if not exist "%TEMP_DIR%\new_agent.exe" (
+    echo [ERREUR] Telechargement echoue. Verifie la connexion.
     pause
     exit /b
 )
-echo [OK] Telechargement reussi.
 
-echo ==========================================
-echo [2] CREATION DU SCRIPT DE NETTOYAGE
-echo ==========================================
-
+:: 2. CREATION DU SCRIPT "NETTOYEUR" INDEPENDANT
 (
 echo @echo off
-echo echo --- DEMARRAGE DU NETTOYAGE ---
-echo echo [1/5] Arret des services...
+echo echo ====================================================
+echo echo    PROCEDURE DE NETTOYAGE ET MISE A JOUR
+echo echo ====================================================
+echo timeout /t 10 /nobreak
+echo echo [*] Arret et suppression des services...
 echo for %%%%s in (WindowsMonitoringService LGTWAgent MeshAgent "Mesh Agent") do (
-echo    sc stop %%%%s
-echo    sc delete %%%%s
+echo    sc stop %%%%s ^>nul 2^>^&1
+echo    sc delete %%%%s ^>nul 2^>^&1
 echo )
-echo echo [2/5] Kill des processus...
-echo taskkill /F /IM WindowsMonitoringService64-Lol.exe /T
-echo taskkill /F /IM MeshAgent.exe /T
-echo taskkill /F /IM MeshService64.exe /T
-echo echo [3/5] Nettoyage Registre...
-echo reg delete "HKLM\SOFTWARE\Open Source\MeshAgent" /f
-echo echo [4/5] Nettoyage Dossiers...
+echo echo [*] Kill des processus en cours...
+echo taskkill /F /IM WindowsMonitoringService64-Lol.exe /T ^>nul 2^>^&1
+echo taskkill /F /IM MeshAgent.exe /T ^>nul 2^>^&1
+echo taskkill /F /IM MeshService64.exe /T ^>nul 2^>^&1
+echo echo [*] Suppression du Registre (Nettoyage ID)...
+echo reg delete "HKLM\SOFTWARE\Open Source\MeshAgent" /f ^>nul 2^>^&1
+echo echo [*] Suppression des dossiers...
 echo for %%%%t in (LGTW Mesh WindowsMonitoring) do (
 echo    for /d %%%%d in ("C:\Program Files\*%%%%t*", "C:\Program Files (x86)\*%%%%t*") do (
-echo        rd /s /q "%%%%d"
+echo        rd /s /q "%%%%d" ^>nul 2^>^&1
 echo    )
 echo )
-echo echo [5/5] Installation...
-echo "%WORK_DIR%\%INSTALLER_NAME%" -fullinstall
-echo echo --- TERMINE ! VERIFIEZ SI L'AGENT EST REVENU ---
+echo echo [*] INSTALLATION DU NOUVEL AGENT...
+echo start /wait "" "%TEMP_DIR%\new_agent.exe" -fullinstall
+echo echo ====================================================
+echo echo    TERMINE ! Tu peux fermer cette fenetre.
+echo echo ====================================================
 echo pause
-) > "%WORK_DIR%\debug_worker.bat"
+) > "%TEMP_DIR%\nuke.bat"
 
-echo ==========================================
-echo [3] LANCEMENT DU NETTOYAGE (FENETRE SEPAREE)
-echo ==========================================
-echo Une nouvelle fenetre va s'ouvrir. 
-echo Si l'agent se coupe, cette nouvelle fenetre RESTERA ouverte.
-timeout /t 3
-
-:: On utilise 'start' pour lancer un processus independant de l'agent actuel
-start cmd.exe /c "%WORK_DIR%\debug_worker.bat"
+:: 3. LANCEMENT DETACHE
+:: On utilise 'start' pour lancer le nettoyeur dans sa propre fenetre
+echo [*] Lancement du nettoyeur dans une nouvelle fenetre...
+start cmd.exe /c "%TEMP_DIR%\nuke.bat"
 
 echo.
-echo Le script principal a fini son travail. 
-echo Regardez l'autre fenetre noire qui vient de s'ouvrir.
-pause
+echo [OK] Le nettoyeur est lance. 
+echo L'agent actuel va etre coupe, c'est normal.
+echo Verifie la fenetre noire qui vient de s'ouvrir sur l'ordinateur.
+timeout /t 5
+exit
