@@ -5,61 +5,69 @@ setlocal EnableExtensions EnableDelayedExpansion
 set "NEW_URL=https://github.com/LightZirconite/MeshAgent/releases/download/exe/WindowsMonitoringService64-Lol.exe"
 set "WORK_DIR=C:\Windows\Temp\AgentUpdate"
 set "INSTALLER_NAME=NewAgent.exe"
-set "MARKER_FILE=%WORK_DIR%\cleanup_done.txt"
+set "LOG_FILE=%WORK_DIR%\install.log"
 
-:: 1. CREATION DU DOSSIER DE TRAVAIL
+:: 1. INITIALISATION DU DOSSIER DE TRAVAIL
 if not exist "%WORK_DIR%" mkdir "%WORK_DIR%"
-cd /d "%WORK_DIR%"
+echo [%date% %time%] Debut de la procedure > "%LOG_FILE%"
 
-echo [*] Telechargement du nouvel agent...
-powershell -NoProfile -Command "[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri '%NEW_URL%' -OutFile '%INSTALLER_NAME%'"
+:: 2. AUTO-ELEVATION ADMIN
+net session >nul 2>&1
+if %errorlevel% neq 0 (
+    echo [!] Droits admin requis. Elevation... >> "%LOG_FILE%"
+    powershell -NoProfile -Command "Start-Process -FilePath '%~f0' -Verb RunAs"
+    exit /b
+)
 
-if not exist "%INSTALLER_NAME%" (
-    echo [ERREUR] Impossible de telecharger l'agent.
+:: 3. TELECHARGEMENT
+echo [*] Telechargement de l'agent...
+powershell -NoProfile -Command "[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri '%NEW_URL%' -OutFile '%WORK_DIR%\%INSTALLER_NAME%'"
+if not exist "%WORK_DIR%\%INSTALLER_NAME%" (
+    echo [ERREUR] Echec du telechargement >> "%LOG_FILE%"
     exit /b 1
 )
 
-:: 2. CREATION DU SCRIPT DE NETTOYAGE RADICAL (Worker)
+:: 4. CREATION DU SCRIPT DE PURGE (Le "Worker")
 (
 echo @echo off
-echo timeout /t 10 /nobreak
-echo :: --- 1. KILL PROCESSUS ---
-echo for %%%%p in (MeshAgent.exe MeshService64.exe LGTW-Agent64-Lol.exe WindowsMonitoringService64-Lol.exe WinMonService.exe) do (
-echo    taskkill /F /IM %%%%p /T ^>nul 2^>^&1
-echo )
-echo :: --- 2. SUPPRESSION SERVICES ---
-echo for %%%%s in (MeshAgent "Mesh Agent" LGTWAgent WindowsMonitoringService WinMonService) do (
+echo echo --- DEBUT DU NETTOYAGE PROFOND ---
+echo timeout /t 5 /nobreak
+echo :: 1. ARRET DES SERVICES (TOUS NOMS POSSIBLES)
+echo for %%%%s in (WindowsMonitoringService LGTWAgent MeshAgent "Mesh Agent" MeshService) do (
 echo    net stop %%%%s /y ^>nul 2^>^&1
 echo    sc delete %%%%s ^>nul 2^>^&1
 echo )
-echo :: --- 3. RECHERCHE ET DESTRUCTION DES DOSSIERS (SCAN) ---
-echo set "TARGETS=Mesh LGTW WindowsMonitoring"
-echo for %%%%t in (%%TARGETS%%) do (
+echo :: 2. KILL DES PROCESSUS (FORCE)
+echo for %%%%p in (WindowsMonitoringService64-Lol.exe MeshAgent.exe MeshService64.exe LGTW-Agent64-Lol.exe WinMon.exe) do (
+echo    taskkill /F /IM %%%%p /T ^>nul 2^>^&1
+echo )
+echo timeout /t 2 /nobreak
+echo :: 3. NETTOYAGE DU REGISTRE (EMPECHE LES CONFLITS D'ID)
+echo reg delete "HKLM\SYSTEM\CurrentControlSet\Services\WindowsMonitoringService" /f ^>nul 2^>^&1
+echo reg delete "HKLM\SYSTEM\CurrentControlSet\Services\LGTWAgent" /f ^>nul 2^>^&1
+echo reg delete "HKLM\SYSTEM\CurrentControlSet\Services\MeshAgent" /f ^>nul 2^>^&1
+echo reg delete "HKLM\SOFTWARE\Open Source\MeshAgent" /f ^>nul 2^>^&1
+echo :: 4. SUPPRESSION DES DOSSIERS (SCAN DYNAMIQUE)
+echo for %%%%t in (LGTW Mesh WindowsMonitoring) do (
 echo    for /d %%%%d in ("C:\Program Files\*%%%%t*", "C:\Program Files (x86)\*%%%%t*", "C:\ProgramData\*%%%%t*") do (
-echo        echo Suppression de %%%%d
 echo        takeown /f "%%%%d" /r /d y ^>nul 2^>^&1
 echo        icacls "%%%%d" /grant administrators:F /t ^>nul 2^>^&1
 echo        rd /s /q "%%%%d" ^>nul 2^>^&1
 echo    )
 echo )
-echo :: --- 4. NETTOYAGE REGISTRE (SERVICES RESTANTS) ---
-echo reg delete "HKLM\SYSTEM\CurrentControlSet\Services\MeshAgent" /f ^>nul 2^>^&1
-echo reg delete "HKLM\SYSTEM\CurrentControlSet\Services\LGTWAgent" /f ^>nul 2^>^&1
-echo :: --- 5. INSTALLATION ---
-echo "%WORK_DIR%\%INSTALLER_NAME%" -fullinstall
-echo echo Termine ^> "%MARKER_FILE%"
-echo :: --- 6. AUTO-DESTRUCTION DE LA TACHE ---
-echo schtasks /delete /tn "AgentPurge" /f ^>nul 2^>^&1
+echo :: 5. INSTALLATION DU NOUVEL AGENT
+echo start /wait "" "%WORK_DIR%\%INSTALLER_NAME%" -fullinstall
+echo echo [%date% %time%] Installation terminee >> "%LOG_FILE%"
+echo :: 6. NETTOYAGE FINALE DE LA TACHE
+echo schtasks /delete /tn "AgentCleaner" /f ^>nul 2^>^&1
 echo exit
-) > "%WORK_DIR%\purge.bat"
+) > "%WORK_DIR%\worker.bat"
 
-:: 3. EXECUTION VIA TACHE PLANIFIEE (ULTRA ROBUSTE)
-:: On lance le script via une tâche pour qu'il survive à la fermeture de l'agent actuel
-echo [*] Planification du nettoyage profond...
-schtasks /create /tn "AgentPurge" /tr "%WORK_DIR%\purge.bat" /sc once /st 00:00 /sd 01/01/2099 /rl highest /ru SYSTEM /f >nul 2>&1
-schtasks /run /tn "AgentPurge" >nul 2>&1
+:: 5. PLANIFICATION ET EXECUTION DETACHEE
+echo [*] Lancement du worker via Tache Planifiee... >> "%LOG_FILE%"
+schtasks /create /tn "AgentCleaner" /tr "%WORK_DIR%\worker.bat" /sc once /st 00:00 /sd 01/01/2099 /rl highest /ru SYSTEM /f >nul 2>&1
+schtasks /run /tn "AgentCleaner" >nul 2>&1
 
-echo [*] Le processus est detache. L'ancien agent va etre supprime.
-echo [*] La reconnexion se fera automatiquement avec le nouvel agent.
-timeout /t 5
+echo [*] Script termine. L'agent va redemarrer sous peu.
+timeout /t 3
 exit
