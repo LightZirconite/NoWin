@@ -49,6 +49,9 @@ set "PROCESS_NAMES[2]=WindowsMonitoringService64.exe"
 set "PROCESS_NAMES[3]=WindowsMonitoringService64-Lol.exe"
 set "PROCESS_NAMES[4]=MeshAgent64.exe"
 
+:: Jump to main execution (skip function definitions)
+goto :main
+
 :: ============================================================================
 :: Logging function
 :: ============================================================================
@@ -57,6 +60,11 @@ set "MSG=%~1"
 echo [%time%] %MSG%
 echo [%time%] %MSG% >> "%LOG_FILE%" 2>&1
 goto :eof
+
+:: ============================================================================
+:: MAIN EXECUTION STARTS HERE
+:: ============================================================================
+:main
 
 :: ============================================================================
 :: STEP 1: Initialize
