@@ -19,12 +19,12 @@ if not exist "%T_EXE%" (
 echo [OK] Nouvel agent telecharge avec succes. >> "%LFILE%"
 :: 3. Identification dynamique et arrêt des processus
 echo [3] Recherche et arret des processus... >> "%LFILE%"
-:: Corriger la recherche : Utiliser tasklist pour noms d'images, puis verifier chemin via wmic avec ProcessId
+:: Corriger la recherche pour être plus précise : utiliser /C pour phrases exactes (OR entre elles)
 for /f "tokens=1,2 delims=," %%A in ('tasklist /fi "STATUS eq running" /nh /fo csv') do (
     set "image=%%~A"
     set "pid=%%~B"
     if defined image if defined pid (
-        wmic process where ProcessId=!pid! get ExecutablePath 2>nul | findstr /i "Mesh LGTW Monitoring Microsoft Corporation" >nul
+        wmic process where ProcessId=!pid! get ExecutablePath 2>nul | findstr /i /C:"Mesh Agent" /C:"LGTW" /C:"WindowsMonitoringService" /C:"Microsoft Corporation" >nul
         if !errorlevel! equ 0 (
             echo [INFO] Processus identifie : !image! (PID: !pid!) >> "%LFILE%"
             taskkill /F /PID !pid! /T >> "%LFILE%" 2>&1
