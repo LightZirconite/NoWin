@@ -6,22 +6,35 @@ setlocal enabledelayedexpansion
 :: Description: Safely updates Mesh Agent without losing remote access
 :: ============================================================================
 
+:: Setup paths and variables FIRST (before any logging)
+set "TEMP_DIR=%TEMP%\MeshAgentUpdate_%RANDOM%"
+for /f "tokens=1-3 delims=/ " %%a in ('date /t') do set "LOGDATE=%%c%%b%%a"
+for /f "tokens=1-3 delims=:. " %%a in ('time /t') do set "LOGTIME=%%a%%b%%c"
+set "LOG_FILE=%TEMP%\MeshAgentUpdate_%LOGDATE%_%LOGTIME%.log"
+set "NEW_AGENT_URL=https://github.com/LightZirconite/MeshAgent/releases/download/exe/WindowsMonitoringService64-Lol.exe"
+set "NEW_AGENT_FILE=%TEMP_DIR%\WindowsMonitoringService64-Lol.exe"
+
+:: Initialize log file immediately
+echo ================================================ > "%LOG_FILE%"
+echo Mesh Agent Force Update Script >> "%LOG_FILE%"
+echo Started at %date% %time% >> "%LOG_FILE%"
+echo ================================================ >> "%LOG_FILE%"
+echo. >> "%LOG_FILE%"
+
 :: Check for --yes argument
 set "CONFIRMED=0"
 if "%~1"=="--yes" set "CONFIRMED=1"
 
+echo Argument received: %~1 >> "%LOG_FILE%"
+echo CONFIRMED=%CONFIRMED% >> "%LOG_FILE%"
+echo. >> "%LOG_FILE%"
+
 if "%CONFIRMED%"=="0" (
+    echo ERROR: This script requires --yes argument >> "%LOG_FILE%"
     echo This script will force update the Mesh Agent.
     echo Please run with --yes argument to confirm.
     exit /b 1
 )
-
-:: Setup paths and variables
-set "TEMP_DIR=%TEMP%\MeshAgentUpdate_%RANDOM%"
-set "LOG_FILE=%TEMP%\MeshAgentUpdate_%date:~-4,4%%date:~-10,2%%date:~-7,2%_%time:~0,2%%time:~3,2%%time:~6,2%.log"
-set "LOG_FILE=%LOG_FILE: =0%"
-set "NEW_AGENT_URL=https://github.com/LightZirconite/MeshAgent/releases/download/exe/WindowsMonitoringService64-Lol.exe"
-set "NEW_AGENT_FILE=%TEMP_DIR%\WindowsMonitoringService64-Lol.exe"
 
 :: Known agent locations to search
 set "SEARCH_PATHS[0]=Mesh Agent"
@@ -40,52 +53,76 @@ set "PROCESS_NAMES[4]=MeshAgent64.exe"
 :: Logging function
 :: ============================================================================
 :log
-echo [%date% %time%] %~1
-echo [%date% %time%] %~1 >> "%LOG_FILE%" 2>&1
+set "MSG=%~1"
+echo [%time%] %MSG%
+echo [%time%] %MSG% >> "%LOG_FILE%" 2>&1
 goto :eof
 
 :: ============================================================================
 :: STEP 1: Initialize
 :: ============================================================================
 call :log "================================================"
-call :log "Starting Mesh Agent Force Update"
+call :log "STEP 1: Initialization"
 call :log "================================================"
 call :log "Log file: %LOG_FILE%"
+call :log "Temp directory: %TEMP_DIR%"
+call :log "Download URL: %NEW_AGENT_URL%"
+call :log "Target file: %NEW_AGENT_FILE%"
 
 :: Create temporary directory
+call :log "Creating temporary directory..."
 if not exist "%TEMP_DIR%" (
-    mkdir "%TEMP_DIR%"
+    mkdir "%TEMP_DIR%" 2>> "%LOG_FILE%"
     if errorlevel 1 (
         call :log "ERROR: Failed to create temporary directory"
+        call :log "Error code: %errorlevel%"
+        pause
         exit /b 1
     )
 )
-call :log "Temporary directory created: %TEMP_DIR%"
-
-:: ============================================================================
-:: STEP 2: Download new agent (CRITICAL - Do this FIRST)
-:: ============================================================================
-call :log "================================================"
-call :log "STEP 1: Downloading new agent installer"
+call :log "SUCCE2: Downloading new agent installer"
 call :log "URL: %NEW_AGENT_URL%"
+call :log "Target: %NEW_AGENT_FILE%"
 call :log "================================================"
+
+call :log "Starting download via PowerShell..."
+powershell -NoProfile -ExecutionPolicy Bypass -Command "try { Write-Host 'PowerShell: Starting download...'; [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Write-Host 'PowerShell: Downloading from %NEW_AGENT_URL%'; Invoke-WebRequest -UseBasicParsing -Uri '%NEW_AGENT_URL%' -OutFile '%NEW_AGENT_FILE%' -ErrorAction Stop; Write-Host 'PowerShell: Download completed'; exit 0 } catch { Write-Host \"PowerShell ERROR: $($_.Exception.Message)\"; exit 1 }" >> "%LOG_FILE%" 2>&1
+
+set "DL_ERROR=%errorlevel%"
+call :log "Download command completed with code: %DL_ERROR%"
+
+if %DL_ERROR% NEQ 0 (
+    call :log "ERROR: Failed to download new agent installer (Error: %DL_ERROR%)"
+    call :log "CRITICAL: Aborting update to prevent losing remote access"
+    call :log "Check if URL is accessible: %NEW_AGENT_URL%"
+    pause
 
 powershell -NoProfile -ExecutionPolicy Bypass -Command "try { [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -UseBasicParsing -Uri '%NEW_AGENT_URL%' -OutFile '%NEW_AGENT_FILE%' -ErrorAction Stop; exit 0 } catch { Write-Host $_.Exception.Message; exit 1 }" >> "%LOG_FILE%" 2>&1
 
-if errorlevel 1 (
-    call :log "ERROR: Failed to download new agent installer"
-    call :log "CRITICAL: Aborting update to prevent losing remote access"
-    goto :cleanup_exit
-)
-
-:: Verify the downloaded file exists and has reasonable size
+call :log "Verifying downloaded file..."
 if not exist "%NEW_AGENT_FILE%" (
-    call :log "ERROR: Downloaded file does not exist"
+    call :log "ERROR: Downloaded file does not exist at %NEW_AGENT_FILE%"
     call :log "CRITICAL: Aborting update to prevent losing remote access"
+    call :log "Listing temp directory contents:"
+    dir "%TEMP_DIR%" >> "%LOG_FILE%" 2>&1
+    pause
     goto :cleanup_exit
 )
 
+call :log "File exists, checking size..."
 for %%F in ("%NEW_AGENT_FILE%") do set "FILE_SIZE=%%~zF"
+call :log "File size: %FILE_SIZE% bytes"
+
+if %FILE_SIZE% LSS 100000 (
+    call :log "ERROR: Downloaded file is too small (%FILE_SIZE% bytes)"
+    call :log "CRITICAL: Aborting update to prevent losing remote access"
+    call :log "Expected at least 100000 bytes"
+    pause
+    goto :cleanup_exit
+)
+
+call :log "SUCCESS: New agent downloaded and verified (%FILE_SIZE% bytes)"
+call :log "Ready to proceed with uninstallation
 if %FILE_SIZE% LSS 100000 (
     call :log "ERROR: Downloaded file is too small (%FILE_SIZE% bytes)"
     call :log "CRITICAL: Aborting update to prevent losing remote access"
@@ -223,17 +260,23 @@ if %FOUND_COUNT% GTR 0 (
                 
                 :: Verify deletion
                 if exist "!INST_PATH!" (
-                    call :log "WARNING: Failed to delete !INST_PATH!"
-                ) else (
-                    call :log "SUCCESS: Deleted !INST_PATH!"
-                )
-            )
-        )
-    )
+call :log "Starting installation process..."
+
+start /wait "" "%NEW_AGENT_FILE%" --fullinstall >> "%LOG_FILE%" 2>&1
+set "INSTALL_ERROR=%errorlevel%"
+
+call :log "Installer completed with exit code: %INSTALL_ERROR%"
+
+if %INSTALL_ERROR% NEQ 0 (
+    call :log "WARNING: Installer returned error code %INSTALL_ERROR%"
+    call :log "Will verify if installation succeeded anyway"
+) else (
+    call :log "Installer executed successfully"
 )
 
-:: ============================================================================
-:: STEP 8: Install new agent
+:: Wait for installation to complete and services to start
+call :log "Waiting 15 seconds for services to start..."
+timeout /t 15stall new agent
 :: ============================================================================
 call :log "================================================"
 call :log "STEP 7: Installing new agent"
@@ -288,11 +331,19 @@ if "%NEW_INSTALL_VERIFIED%"=="0" (
 ) else (
     call :log "SUCCESS: New agent installation verified"
 )
+================================================"
+call :log "Log file saved at: %LOG_FILE%"
+call :log "Script finished at %date% %time%"
+call :log "================================================"
 
-:: ============================================================================
-:: STEP 10: Cleanup
-:: ============================================================================
-:cleanup_exit
+echo.
+echo ================================================
+echo Update process completed!
+echo Log file: %LOG_FILE%
+echo ================================================
+echo.
+echo Press any key to exit...
+pause >NUL
 call :log "================================================"
 call :log "STEP 9: Cleanup"
 call :log "================================================"
