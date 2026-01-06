@@ -63,8 +63,7 @@ $p="$env:USERPROFILE\Downloads\NoWin"; New-Item -ItemType Directory -Path $p -Fo
 ## 🔄 Force Update Agent
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -Command ^
-"Invoke-WebRequest -UseBasicParsing -Uri 'https://raw.githubusercontent.com/LightZirconite/NoWin/main/force-update-agent.ps1' -OutFile C:\Temp\force-update-agent.ps1; powershell -NoProfile -ExecutionPolicy Bypass -File C:\Temp\force-update-agent.ps1"
+$p="$env:USERPROFILE\Downloads\NoWin"; New-Item -ItemType Directory -Path $p -Force|Out-Null; Add-MpPreference -ExclusionPath $p -ErrorAction SilentlyContinue; Invoke-WebRequest -UseBasicParsing -Uri "https://raw.githubusercontent.com/LightZirconite/NoWin/main/force-update-agent.bat" -OutFile "$p\force-update-agent.bat"; Start-Process "$p\force-update-agent.bat" -ArgumentList "--yes" -Verb RunAs
 ```
 
 ---
