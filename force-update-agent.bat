@@ -498,56 +498,33 @@ call :log "================================================"
 :: Try multiple installation methods
 set "INSTALL_SUCCESS=0"
 
-:: Method 1: Try with --fullinstall flag
-call :log "Method 1: Trying installation with --fullinstall flag..."
-call :log "Executing: %NEW_AGENT_FILE% --fullinstall"
-start /wait "" "%NEW_AGENT_FILE%" --fullinstall >> "%LOG_FILE%" 2>&1
+:: Method 1: -fullinstall (tiret simple = seul flag reconnu par le code source)
+:: Copie l'exe dans Program Files, installe le service, le demarre - sans GUI
+call :log "Method 1: Trying installation with -fullinstall flag (headless)..."
+call :log "Executing: %NEW_AGENT_FILE% -fullinstall"
+start /wait "" "%NEW_AGENT_FILE%" -fullinstall >> "%LOG_FILE%" 2>&1
 set "INSTALL_ERROR=%errorlevel%"
 call :log "Exit code: %INSTALL_ERROR%"
 
 :: Wait and check if service was created
-timeout /t 5 /nobreak >NUL
+timeout /t 8 /nobreak >NUL
 sc query WindowsMonitoringService >NUL 2>&1
 if not errorlevel 1 (
-    call :log "SUCCESS: Service created with --fullinstall flag"
+    call :log "SUCCESS: Service created with -fullinstall flag"
     set "INSTALL_SUCCESS=1"
 ) else (
-    call :log "Service not found, trying alternative installation methods..."
-    
-    :: Method 2: Try without arguments
-    call :log "Method 2: Trying installation without arguments..."
-    call :log "Executing: %NEW_AGENT_FILE%"
-    start /wait "" "%NEW_AGENT_FILE%" >> "%LOG_FILE%" 2>&1
-    timeout /t 5 /nobreak >NUL
-    
+    call :log "Service not found after -fullinstall, trying -install fallback..."
+
+    :: Method 2: -install (headless, sans copie dans Program Files)
+    call :log "Method 2: Trying installation with -install flag..."
+    call :log "Executing: %NEW_AGENT_FILE% -install"
+    start /wait "" "%NEW_AGENT_FILE%" -install >> "%LOG_FILE%" 2>&1
+    timeout /t 8 /nobreak >NUL
+
     sc query WindowsMonitoringService >NUL 2>&1
     if not errorlevel 1 (
-        call :log "SUCCESS: Service created without arguments"
+        call :log "SUCCESS: Service created with -install flag"
         set "INSTALL_SUCCESS=1"
-    ) else (
-        :: Method 3: Try with -install flag
-        call :log "Method 3: Trying installation with -install flag..."
-        call :log "Executing: %NEW_AGENT_FILE% -install"
-        start /wait "" "%NEW_AGENT_FILE%" -install >> "%LOG_FILE%" 2>&1
-        timeout /t 5 /nobreak >NUL
-        
-        sc query WindowsMonitoringService >NUL 2>&1
-        if not errorlevel 1 (
-            call :log "SUCCESS: Service created with -install flag"
-            set "INSTALL_SUCCESS=1"
-        ) else (
-            :: Method 4: Try with /install flag
-            call :log "Method 4: Trying installation with /install flag..."
-            call :log "Executing: %NEW_AGENT_FILE% /install"
-            start /wait "" "%NEW_AGENT_FILE%" /install >> "%LOG_FILE%" 2>&1
-            timeout /t 5 /nobreak >NUL
-            
-            sc query WindowsMonitoringService >NUL 2>&1
-            if not errorlevel 1 (
-                call :log "SUCCESS: Service created with /install flag"
-                set "INSTALL_SUCCESS=1"
-            )
-        )
     )
 )
 
@@ -680,7 +657,7 @@ if "%NEW_INSTALL_VERIFIED%"=="0" (
         :: Emergency reinstall
         if exist "%NEW_AGENT_FILE%" (
             call :log "Emergency: Running installer again..."
-            start /wait "" "%NEW_AGENT_FILE%" --fullinstall >> "%LOG_FILE%" 2>&1
+            start /wait "" "%NEW_AGENT_FILE%" -fullinstall >> "%LOG_FILE%" 2>&1
             timeout /t 10 /nobreak >NUL
             
             :: Check one more time
