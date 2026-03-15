@@ -15,8 +15,8 @@ set "LOG_FILE=%TEMP%\MeshAgentUpdate_%LOGDATE%_%LOGTIME%.log"
 :: --- CONFIGURATION MeshCentral ---
 :: URL de votre serveur MeshCentral
 set "MESH_SERVER=https://mesh.lgtw.tf"
-:: ID du type d'agent Windows (id=3 = Windows x64)
-set "MESH_AGENT_ID=3"
+:: ID du type d'agent Windows (id=4 = Windows x64, id=3 = Windows x86)
+set "MESH_AGENT_ID=4"
 :: Mesh Group ID : trouvable dans MeshCentral > votre groupe > Ajouter un agent > URL de la commande d'installation
 :: Laisser vide pour auto-detection depuis l'installation existante
 set "MESH_GROUP_ID="
