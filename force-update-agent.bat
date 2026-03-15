@@ -512,8 +512,16 @@ if %FOUND_COUNT% GTR 0 (
                     timeout /t 2 /nobreak >NUL
                     
                     if exist "!INST_PATH!" (
-                        call :log "WARNING: Failed to delete !INST_PATH!"
-                        call :log "Files may be locked, will continue anyway"
+                        call :log "Attempt 3: PowerShell Remove-Item fallback..."
+                        powershell -NoProfile -NonInteractive -Command "Remove-Item -LiteralPath '!INST_PATH!' -Recurse -Force -ErrorAction SilentlyContinue" >> "%LOG_FILE%" 2>&1
+                        timeout /t 2 /nobreak >NUL
+
+                        if exist "!INST_PATH!" (
+                            call :log "WARNING: Failed to delete !INST_PATH!"
+                            call :log "Files may be locked, will continue anyway"
+                        ) else (
+                            call :log "SUCCESS: Deleted !INST_PATH! via PowerShell"
+                        )
                     ) else (
                         call :log "SUCCESS: Deleted !INST_PATH! after taking ownership"
                     )
