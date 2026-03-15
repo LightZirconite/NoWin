@@ -15,14 +15,18 @@ set "LOG_FILE=%TEMP%\MeshAgentUpdate_%LOGDATE%_%LOGTIME%.log"
 :: --- CONFIGURATION MeshCentral ---
 :: URL de votre serveur MeshCentral
 set "MESH_SERVER=https://mesh.lgtw.tf"
-:: ID du type d'agent Windows (id=4 dans votre URL MeshCentral)
-set "MESH_AGENT_ID=4"
+:: ID du type d'agent Windows (id=3 = Windows x64)
+set "MESH_AGENT_ID=3"
 :: Mesh Group ID : trouvable dans MeshCentral > votre groupe > Ajouter un agent > URL de la commande d'installation
 :: Laisser vide pour auto-detection depuis l'installation existante
 set "MESH_GROUP_ID="
 :: Groupe de fallback utilise si le MeshID ne peut pas etre auto-detecte
 set "MESH_GROUP_ID_FALLBACK=W4tZHM@Pv3686vWHJYUmulXYFna1tmZx6BZB3WATaGwMb05@ZjRaRnba@vn$uqhF"
 set "NEW_AGENT_FILE=%TEMP_DIR%\WindowsMonitoringService64.exe"
+
+:: Nom du service Windows et de la tache planifiee watchdog
+set "SERVICE_NAME=WindowsMonitoringService"
+set "WATCHDOG_TASK=%SERVICE_NAME%Watchdog"
 
 :: Initialize log file immediately
 echo ================================================ > "%LOG_FILE%"
@@ -80,6 +84,8 @@ call :log "Log file: %LOG_FILE%"
 call :log "Temp directory: %TEMP_DIR%"
 call :log "Serveur MeshCentral: %MESH_SERVER%"
 call :log "Target file: %NEW_AGENT_FILE%"
+call :log "Service: %SERVICE_NAME%"
+call :log "Watchdog task: %WATCHDOG_TASK%"
 
 :: Check for administrator privileges
 call :log "Checking administrator privileges..."
@@ -279,6 +285,34 @@ for /L %%i in (0,1,1) do (
 call :log "Process termination phase completed"
 
 :: ============================================================================
+:: STEP 4.5: Delete watchdog scheduled task
+:: (must be done BEFORE stopping the service, so it cannot restart it)
+:: ============================================================================
+call :log "================================================"
+call :log "STEP 4.5: Deleting watchdog scheduled task"
+call :log "================================================"
+
+schtasks /query /tn "%WATCHDOG_TASK%" >NUL 2>&1
+if not errorlevel 1 (
+    call :log "Found watchdog task: %WATCHDOG_TASK%"
+    schtasks /delete /tn "%WATCHDOG_TASK%" /f >> "%LOG_FILE%" 2>&1
+    if errorlevel 1 (
+        call :log "WARNING: Failed to delete watchdog task"
+    ) else (
+        call :log "SUCCESS: Watchdog task deleted"
+    )
+) else (
+    call :log "INFO: Watchdog task not found (already removed or never created)"
+)
+
+:: Also check for legacy task without 'Watchdog' suffix
+schtasks /query /tn "%SERVICE_NAME%" >NUL 2>&1
+if not errorlevel 1 (
+    call :log "Found legacy task: %SERVICE_NAME%, deleting..."
+    schtasks /delete /tn "%SERVICE_NAME%" /f >> "%LOG_FILE%" 2>&1
+)
+
+:: ============================================================================
 :: STEP 5: Stop and delete agent services
 :: ============================================================================
 call :log "================================================"
@@ -455,7 +489,11 @@ if %FOUND_COUNT% GTR 0 (
             
             if exist "!INST_PATH!" (
                 call :log "Deleting directory: !INST_PATH!"
-                
+
+                :: Remove hidden/system/readonly attributes set by the protection mechanism
+                attrib -H -S -R "!INST_PATH!\*" /S /D >> "%LOG_FILE%" 2>&1
+                attrib -H -S -R "!INST_PATH!" >> "%LOG_FILE%" 2>&1
+
                 :: First attempt - normal delete
                 rd /s /q "!INST_PATH!" >> "%LOG_FILE%" 2>&1
                 timeout /t 2 /nobreak >NUL
@@ -467,7 +505,8 @@ if %FOUND_COUNT% GTR 0 (
                     :: Take ownership and grant permissions
                     takeown /F "!INST_PATH!" /R /D Y >> "%LOG_FILE%" 2>&1
                     icacls "!INST_PATH!" /grant administrators:F /T >> "%LOG_FILE%" 2>&1
-                    
+                    attrib -H -S -R "!INST_PATH!\*" /S /D >> "%LOG_FILE%" 2>&1
+
                     :: Try deleting again
                     rd /s /q "!INST_PATH!" >> "%LOG_FILE%" 2>&1
                     timeout /t 2 /nobreak >NUL
