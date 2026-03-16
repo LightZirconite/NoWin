@@ -257,11 +257,9 @@ echo [9] Restoring UI Visibility...
 reg delete "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" /v SettingsPageVisibility /f >nul 2>&1
 reg delete "HKU\.DEFAULT\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" /v SettingsPageVisibility /f >nul 2>&1
 reg delete "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer" /v SettingsPageVisibility /f >nul 2>&1
- (system-level only)
-reg delete "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer" /v SettingsPageVisibility /f >nul 2>&1
 
 echo    * UI visibility restored.
-echo    * NOTE: User-level restrictions -> Use UserUnlock.bat===============
+echo    * NOTE: User-level restrictions -> Use UserUnlock.bat
 echo.
 echo [10] Removing Additional Restrictions...
 
@@ -361,18 +359,3 @@ if "%AUTO_YES%"=="1" (
         shutdown /r /t 0
     )
 )
-3.0)
-echo ==========================================
-echo.
-echo Restored features:
-echo  [+] WinRE / Recovery Environment
-echo  [+] Safe Mode
-echo  [+] Advanced Startup Options (Shift+Restart)
-echo  [+] System Reset / Fresh Start
-echo  [+] System Restore / Shadow Copies
-echo  [+] Recovery Command Prompt
-echo  [+] DISM / SFC tools
-echo  [+] Sleep / Hibernation
-echo.
-echo NOTE: A reboot is recommended to fully apply changes.
-echo      User-level restrictions: Use UserUnlock.bat

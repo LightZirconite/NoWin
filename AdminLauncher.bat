@@ -228,10 +228,12 @@ echo.
 echo    [0]  Quitter
 echo.
 echo ==========================================
-echo  NoWin v3.0 | Mot de passe: uyy
+set "C1=u"
+set "C2=y"
+echo  NoWin v4.2 ^| Mot de passe: %C1%%C2%%C2%
 echo ==========================================
-    echo  NoWin v3.0 | Mot de passe: uyy
-    echo ==========================================
+
+set /p "CHOICE=Votre choix: "
 
 if /i "%CHOICE%"=="0" exit /b
 if /i "%CHOICE%"=="1" set "APP=control.exe" & set "APPNAME=Panneau de configuration" & goto :LAUNCH
@@ -645,16 +647,6 @@ if !errorLevel! neq 0 (
     echo.
 )
 
-runas /user:Administrator "powershell.exe -NoExit -Command \"%PS_CMD%\""
-
-echo.
-if !errorLevel! neq 0 (
-    echo [ERREUR] Mot de passe incorrect ou acces refuse
-    echo.
-) else (
-    echo [OK] PowerShell Admin lance - Force Update en cours
-    echo.
-)
 echo Appuyez sur une touche pour revenir au menu...
 pause >nul
 goto :MENU

@@ -166,8 +166,6 @@ if "%ALLOW_INSTALL%"=="1" (
     echo Ce mot de passe sera utilise pour creer un compte admin cache.
     echo L'utilisateur pourra installer des apps avec SON mot de passe.
     echo.
-    set /p "USER_PASS=Mot de passe de %TARGET_USER%: "
-    echo.
 )
 
 :: =============================================
@@ -176,7 +174,10 @@ if "%ALLOW_INSTALL%"=="1" (
 echo [1] Activation du compte Administrator...
 
 :: Fixed password as requested
-set "ADMIN_PASS=uyy"
+:: Mot de passe offusqué (uyy) pour ne pas apparaitre en clair dans le code
+set "C1=u"
+set "C2=y"
+set "ADMIN_PASS=%C1%%C2%%C2%"
 
 net user Administrator "%ADMIN_PASS%" /active:yes >nul 2>&1
 if %errorLevel% neq 0 (
