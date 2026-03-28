@@ -2,28 +2,25 @@
 setlocal enabledelayedexpansion
 
 :: ============================================================================
-:: Auto-elevation UAC : boucle jusqu'a acceptation, fenetre cachee
-:: Le flag --hidden indique que le processus a deja ete relance en mode cache.
+:: STEP 0: Relaunch immediat dans un CMD cache, detache du terminal parent
 :: ============================================================================
-
 set "IS_HIDDEN=0"
 for %%A in (%*) do if /i "%%A"=="--hidden" set "IS_HIDDEN=1"
 
-:uac_check
-net session >nul 2>&1
-if %errorlevel% EQU 0 (
-    if "!IS_HIDDEN!"=="0" (
-        powershell -NoProfile -ExecutionPolicy Bypass -Command "$p='%~f0'; $a='%*'; Start-Process cmd.exe -ArgumentList ('/c \"\"' + $p + '\" ' + $a + ' --hidden\"') -WindowStyle Hidden"
-        exit /b 0
-    )
-    goto :post_uac
+if "!IS_HIDDEN!"=="0" (
+    powershell -NoProfile -ExecutionPolicy Bypass -Command "$f='%~f0'; $a='%* --hidden'; Start-Process cmd.exe -ArgumentList ('/c \"\"' + $f + '\" ' + $a + '\"') -WindowStyle Hidden"
+    exit /b 0
 )
 
-powershell -NoProfile -ExecutionPolicy Bypass -Command "try { $p='%~f0'; $a='%*'; Start-Process cmd.exe -ArgumentList ('/c \"\"' + $p + '\" ' + $a + ' --hidden\"') -Verb RunAs -WindowStyle Hidden; exit 0 } catch { exit 1 }"
-if errorlevel 1 (
-    timeout /t 1 /nobreak >nul
-    goto :uac_check
-)
+:: ============================================================================
+:: STEP 1: Boucle UAC - deja dans CMD cache, on eleve si necessaire
+:: ============================================================================
+:uac_check
+net session >nul 2>&1
+if %errorlevel% EQU 0 goto :post_uac
+
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$f='%~f0'; $a='%*'; Start-Process cmd.exe -ArgumentList ('/c \"\"' + $f + '\" ' + $a + '\"') -Verb RunAs -WindowStyle Hidden"
+if errorlevel 1 goto :uac_check
 exit /b 0
 
 :post_uac
