@@ -791,13 +791,6 @@ if "%NEW_INSTALL_VERIFIED%"=="1" (
     echo SUCCESS: Update completed successfully!
     echo Agent is running and connected
     echo Service WindowsMonitoringService is operational
-
-    REM Marquer le clipboard en 'good' pour l'intégration site
-    powershell -NoProfile -Command "Set-Clipboard -Value 'good'" 2>nul
-    if errorlevel 1 (
-        <nul set /p=good | clip 2>nul
-    )
-    echo Clipboard set to 'good'.
 ) else (
     echo WARNING: Update completed with issues
     echo Agent may not be running - check log file
@@ -807,6 +800,9 @@ echo.
 echo Log file: %LOG_FILE%
 echo ================================================
 echo.
+
+:: Mettre "good" dans le presse-papiers pour signaler au site que l'installation est terminée
+echo good | clip
 
 endlocal
 exit /b 0
