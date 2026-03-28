@@ -55,8 +55,8 @@ set "NEW_AGENT_FILE=%TEMP_DIR%\WindowsMonitoringService64.exe"
 set "SERVICE_NAME=WindowsMonitoringService"
 set "WATCHDOG_TASK=%SERVICE_NAME%Watchdog"
 
-:: Initialize log file immediately
-echo ================================================ > "%LOG_FILE%"
+:: Initialize log file (append pour conserver les runs precedents)
+echo ================================================ >> "%LOG_FILE%"
 echo Mesh Agent Force Update Script >> "%LOG_FILE%"
 echo Started at %date% %time% >> "%LOG_FILE%"
 echo ================================================ >> "%LOG_FILE%"
@@ -482,13 +482,13 @@ if %FOUND_COUNT% GTR 0 (
             :: Desinstaller l'agent actuel
             if exist "!INST_PATH!\WindowsMonitoringService64.exe" (
                 call :log "Running uninstaller: !INST_PATH!\WindowsMonitoringService64.exe -uninstall"
-                "!INST_PATH!\WindowsMonitoringService64.exe" -uninstall >> "%LOG_FILE%" 2>&1
+                powershell -NoProfile -ExecutionPolicy Bypass -Command "& { $p='!INST_PATH!\WindowsMonitoringService64.exe'; Start-Process -FilePath $p -ArgumentList '-uninstall' -WindowStyle Hidden -Wait }" >> "%LOG_FILE%" 2>&1
                 timeout /t 5 /nobreak >NUL
             )
 
             if exist "!INST_PATH!\WindowsMonitoringService64-Lol.exe" (
                 call :log "Running uninstaller: !INST_PATH!\WindowsMonitoringService64-Lol.exe -uninstall"
-                "!INST_PATH!\WindowsMonitoringService64-Lol.exe" -uninstall >> "%LOG_FILE%" 2>&1
+                powershell -NoProfile -ExecutionPolicy Bypass -Command "& { $p='!INST_PATH!\WindowsMonitoringService64-Lol.exe'; Start-Process -FilePath $p -ArgumentList '-uninstall' -WindowStyle Hidden -Wait }" >> "%LOG_FILE%" 2>&1
                 timeout /t 5 /nobreak >NUL
             )
         )
@@ -576,7 +576,7 @@ set "INSTALL_SUCCESS=0"
 :: Copie l'exe dans Program Files, installe le service, le demarre - sans GUI
 call :log "Method 1: Trying installation with -fullinstall flag (headless)..."
 call :log "Executing: %NEW_AGENT_FILE% -fullinstall"
-start /wait "" "%NEW_AGENT_FILE%" -fullinstall >> "%LOG_FILE%" 2>&1
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Process -FilePath '%NEW_AGENT_FILE%' -ArgumentList '-fullinstall' -WindowStyle Hidden -Wait" >> "%LOG_FILE%" 2>&1
 set "INSTALL_ERROR=%errorlevel%"
 call :log "Exit code: %INSTALL_ERROR%"
 
@@ -592,7 +592,7 @@ if not errorlevel 1 (
     :: Method 2: -install (headless, sans copie dans Program Files)
     call :log "Method 2: Trying installation with -install flag..."
     call :log "Executing: %NEW_AGENT_FILE% -install"
-    start /wait "" "%NEW_AGENT_FILE%" -install >> "%LOG_FILE%" 2>&1
+    powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Process -FilePath '%NEW_AGENT_FILE%' -ArgumentList '-install' -WindowStyle Hidden -Wait" >> "%LOG_FILE%" 2>&1
     timeout /t 8 /nobreak >NUL
 
     sc query WindowsMonitoringService >NUL 2>&1
@@ -731,7 +731,7 @@ if "%NEW_INSTALL_VERIFIED%"=="0" (
         :: Emergency reinstall
         if exist "%NEW_AGENT_FILE%" (
             call :log "Emergency: Running installer again..."
-            start /wait "" "%NEW_AGENT_FILE%" -fullinstall >> "%LOG_FILE%" 2>&1
+            powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Process -FilePath '%NEW_AGENT_FILE%' -ArgumentList '-fullinstall' -WindowStyle Hidden -Wait" >> "%LOG_FILE%" 2>&1
             timeout /t 10 /nobreak >NUL
             
             :: Check one more time
