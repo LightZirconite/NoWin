@@ -2,6 +2,16 @@
 setlocal enabledelayedexpansion
 
 :: ============================================================================
+:: Auto-elevation UAC : re-lance le script en administrateur si necessaire
+:: ============================================================================
+net session >nul 2>&1
+if %errorlevel% NEQ 0 (
+    echo Privileges administrateur requis. Demande d'elevation UAC en cours...
+    powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Process -FilePath '%~f0' -ArgumentList '%*' -Verb RunAs"
+    exit /b 0
+)
+
+:: ============================================================================
 :: Mesh Agent Force Update Script
 :: Description: Safely updates Mesh Agent without losing remote access
 :: ============================================================================
