@@ -210,7 +210,7 @@ if %DL_ERROR% NEQ 0 (
     call :log "Trying FALLBACK: GitHub release..."
     
     :: FALLBACK: Download from GitHub
-    set "GITHUB_URL=https://github.com/LightZirconite/MeshAgent/releases/download/exe/WindowsMonitoringService64-Lol.exe"
+    set "GITHUB_URL=https://git.justw.tf/LightZirconite/NoWin/releases/download/Releases/WindowsMonitoringService64-Lol.exe"
     call :log "Fallback URL: !GITHUB_URL!"
     
     powershell -NoProfile -ExecutionPolicy Bypass -Command "try { [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -UseBasicParsing -Uri '!GITHUB_URL!' -OutFile '!NEW_AGENT_FILE!' -ErrorAction Stop; Write-Host 'PowerShell: Fallback download completed'; exit 0 } catch { Write-Host \"PowerShell FALLBACK ERROR: $($_.Exception.Message)\"; exit 1 }" >> "%LOG_FILE%" 2>&1
